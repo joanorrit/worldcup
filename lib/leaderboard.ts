@@ -115,48 +115,53 @@ async function getBlobSnapshotSources(): Promise<SnapshotSource[]> {
     return [];
   }
 
-  const sources: SnapshotSource[] = [];
-  let cursor: string | undefined;
+  try {
+    const sources: SnapshotSource[] = [];
+    let cursor: string | undefined;
 
-  do {
-    const page = await list({
-      cursor,
-      prefix: RESULTS_BLOB_PREFIX,
-      token,
-    });
+    do {
+      const page = await list({
+        cursor,
+        prefix: RESULTS_BLOB_PREFIX,
+        token,
+      });
 
-    const pageSources = await Promise.all(
-      page.blobs.map(async (blob) => {
-        const fileName = getSafeResultFileName(blob.pathname);
+      const pageSources = await Promise.all(
+        page.blobs.map(async (blob) => {
+          const fileName = getSafeResultFileName(blob.pathname);
 
-        if (!isResultFileName(fileName)) {
-          return null;
+          if (!isResultFileName(fileName)) {
+            return null;
+          }
+
+          const response = await fetch(blob.url, { cache: 'no-store' });
+
+          if (!response.ok) {
+            throw new Error(`Could not read uploaded result CSV ${fileName}.`);
+          }
+
+          return {
+            fileName,
+            content: await response.text(),
+            fallbackDate: blob.uploadedAt,
+          };
+        }),
+      );
+
+      for (const source of pageSources) {
+        if (source) {
+          sources.push(source);
         }
-
-        const response = await fetch(blob.url, { cache: 'no-store' });
-
-        if (!response.ok) {
-          throw new Error(`Could not read uploaded result CSV ${fileName}.`);
-        }
-
-        return {
-          fileName,
-          content: await response.text(),
-          fallbackDate: blob.uploadedAt,
-        };
-      }),
-    );
-
-    for (const source of pageSources) {
-      if (source) {
-        sources.push(source);
       }
-    }
 
-    cursor = page.cursor;
-  } while (cursor);
+      cursor = page.cursor;
+    } while (cursor);
 
-  return sources;
+    return sources;
+  } catch (error) {
+    console.error('Could not read Vercel Blob result CSVs.', error);
+    return [];
+  }
 }
 
 function readSnapshot(source: SnapshotSource): LeaderboardSnapshot {

@@ -170,14 +170,29 @@ async function processResultUpload(formData: FormData): Promise<UploadResult> {
     return { ok: false, message: validationError };
   }
 
-  await put(`${RESULTS_BLOB_PREFIX}${fileName}`, content, {
-    access: 'public',
-    allowOverwrite: true,
-    contentType: 'text/csv; charset=utf-8',
-    token: blobToken,
-  });
+  try {
+    await put(`${RESULTS_BLOB_PREFIX}${fileName}`, content, {
+      access: 'public',
+      allowOverwrite: true,
+      contentType: 'text/csv; charset=utf-8',
+      token: blobToken,
+    });
+  } catch (error) {
+    console.error('Could not upload result CSV to Vercel Blob.', error);
+    return { ok: false, message: getBlobUploadErrorMessage(error) };
+  }
 
   return { ok: true, fileName };
+}
+
+function getBlobUploadErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+
+  if (message.includes('store does not exist')) {
+    return 'The configured Vercel Blob store does not exist. Check BLOB_READ_WRITE_TOKEN in Vercel and redeploy.';
+  }
+
+  return 'The CSV could not be uploaded to Blob storage.';
 }
 
 function isUploadedFile(value: FormDataEntryValue | null): value is File {
