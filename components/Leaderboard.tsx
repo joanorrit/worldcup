@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 import type { Standing } from '@/lib/leaderboard';
 
 export interface LeaderboardSnapshotView {
@@ -17,25 +19,22 @@ interface LeaderboardProps {
 
 const numberFormatter = new Intl.NumberFormat('en-US');
 
+const podiumLogos = [
+  { rank: 1, src: '/logos/platinum.png', alt: 'Platinum trophy' },
+  { rank: 2, src: '/logos/gold.png', alt: 'Gold trophy' },
+  { rank: 3, src: '/logos/bronze.png', alt: 'Bronze trophy' },
+];
+
 export function Leaderboard({ snapshots, initialIndex }: LeaderboardProps) {
   const latestIndex = Math.max(snapshots.length - 1, 0);
   const safeInitialIndex = initialIndex ?? latestIndex;
   const [currentIndex, setCurrentIndex] = useState(() => clampIndex(safeInitialIndex, snapshots.length));
 
   const snapshot = snapshots[currentIndex];
+  const latestSnapshot = snapshots[latestIndex];
+  const latestLeaders = latestSnapshot?.standings.slice(0, 3) ?? [];
   const canGoPrevious = currentIndex > 0;
   const canGoNext = currentIndex < latestIndex;
-
-  const summary = useMemo(() => {
-    const leader = snapshot?.standings[0];
-    const totalPoints = snapshot?.standings.reduce((sum, standing) => sum + standing.points, 0) ?? 0;
-
-    return {
-      leader: leader ? `${leader.player} · ${formatNumber(leader.points)} pts` : '—',
-      players: snapshot?.standings.length ?? 0,
-      totalPoints,
-    };
-  }, [snapshot]);
 
   const goPrevious = useCallback(() => {
     setCurrentIndex((index) => Math.max(index - 1, 0));
@@ -77,7 +76,7 @@ export function Leaderboard({ snapshots, initialIndex }: LeaderboardProps) {
         dateLabel={snapshot.dateLabel}
       />
 
-      <LeaderboardSummary leader={summary.leader} players={summary.players} totalPoints={summary.totalPoints} />
+      <PodiumLeaders standings={latestLeaders} />
 
       <PlayerRowList standings={snapshot.standings} />
     </section>
@@ -123,12 +122,54 @@ function LeaderboardHeader({
   );
 }
 
-function LeaderboardSummary({ leader, players, totalPoints }: { leader: string; players: number; totalPoints: number }) {
+function PodiumLeaders({ standings }: { standings: Standing[] }) {
   return (
-    <div className="grid border-b border-[#8B847D40] bg-[#EEF1F3]/60 text-sm sm:grid-cols-3">
-      <SummaryItem label="Leader" value={leader} />
-      <SummaryItem label="Players" value={String(players)} />
-      <SummaryItem label="Total points" value={formatNumber(totalPoints)} />
+    <div className="grid border-b border-[#8B847D40] bg-[#EBE7E4]/45 text-left sm:grid-cols-3">
+      {standings.map((standing, index) => (
+        <PodiumLeader key={standing.player} standing={standing} logo={podiumLogos[index]} />
+      ))}
+    </div>
+  );
+}
+
+function PodiumLeader({
+  standing,
+  logo,
+}: {
+  standing: Standing;
+  logo: { rank: number; src: string; alt: string };
+}) {
+  return (
+    <article className="grid grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-3 border-b border-[#8B847D40] px-4 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:last:border-r-0">
+      <div className="relative h-12 w-12 overflow-hidden">
+        <Image src={logo.src} alt={logo.alt} fill sizes="48px" className="object-contain" priority={logo.rank === 1} />
+      </div>
+
+      <div className="min-w-0">
+        <div className="flex items-baseline gap-2">
+          <p className="font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">#{standing.rank}</p>
+          <h2 className="min-w-0 truncate text-base font-semibold leading-tight">
+            <Link href={getPlayerPath(standing.player)} className="truncate text-[#252F3D] transition-colors hover:text-[#4B607C]">
+              {standing.player}
+            </Link>
+          </h2>
+        </div>
+
+        <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
+          <PodiumMetric label="Points" value={formatNumber(standing.points)} />
+          <PodiumMetric label="Signes" value={String(standing.signs)} />
+          <PodiumMetric label="Resultats" value={String(standing.exactResults)} />
+        </dl>
+      </div>
+    </article>
+  );
+}
+
+function PodiumMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-[#8B847D2E] px-2 py-2">
+      <dt className="font-mono text-[0.55rem] uppercase leading-none tracking-[0.08em] text-[#5C5752]">{label}</dt>
+      <dd className="mt-1 text-sm font-semibold tabular-nums text-[#252F3D]">{value}</dd>
     </div>
   );
 }
@@ -167,8 +208,10 @@ function PlayerRow({ standing }: { standing: Standing }) {
         #{standing.rank}
       </div>
 
-      <h2 className="truncate pr-3 text-base font-medium leading-tight text-[#252F3D]">
-        {standing.player}
+      <h2 className="truncate pr-3 text-base font-medium leading-tight">
+        <Link href={getPlayerPath(standing.player)} className="truncate text-[#252F3D] transition-colors hover:text-[#4B607C]">
+          {standing.player}
+        </Link>
       </h2>
 
       <div className="flex justify-center">
@@ -220,15 +263,6 @@ function ArrowButton({
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 border-b border-[#8B847D40] px-4 py-3 text-center last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:last:border-r-0">
-      <p className="font-mono text-[0.68rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">{label}</p>
-      <p className="max-w-full truncate text-center text-sm font-medium text-[#252F3D]">{value}</p>
-    </div>
-  );
-}
-
 function MovementBadge({ movement }: { movement: number | null }) {
   if (movement === null) {
     return <span className="border border-[#8B847D40] px-2 py-1 font-mono text-[0.62rem] uppercase tracking-[0.08em] text-[#5C5752]">new</span>;
@@ -262,6 +296,10 @@ function clampIndex(index: number, length: number) {
   }
 
   return Math.min(Math.max(index, 0), length - 1);
+}
+
+function getPlayerPath(player: string) {
+  return `/${encodeURIComponent(player.toLowerCase())}`;
 }
 
 function formatNumber(value: number) {
