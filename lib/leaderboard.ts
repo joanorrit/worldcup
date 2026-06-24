@@ -1,0 +1,192 @@
+import 'server-only';
+
+import { readdir, readFile, stat } from 'node:fs/promises';
+import path from 'node:path';
+import { parse } from 'csv-parse/sync';
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const CSV_DATE_PATTERN = /(\d{4})_(\d{2})_(\d{2})/;
+
+export interface RawCsvRow {
+  Jugador?: string;
+  Signes?: string;
+  Resultats?: string;
+  'Diferència gols'?: string;
+  Punts?: string;
+}
+
+export interface Standing {
+  player: string;
+  signs: number;
+  exactResults: number;
+  goalDifference: number;
+  points: number;
+  rank: number;
+  rankMovement: number | null;
+  pointMovement: number | null;
+}
+
+export interface LeaderboardSnapshot {
+  dateKey: string;
+  date: Date;
+  fileName: string;
+  standings: Standing[];
+}
+
+export interface LeaderboardData {
+  snapshots: LeaderboardSnapshot[];
+  latest: LeaderboardSnapshot | null;
+}
+
+export function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
+}
+
+export async function getLeaderboardData(): Promise<LeaderboardData> {
+  const fileNames = (await readdir(DATA_DIR))
+    .filter((fileName) => fileName.toLowerCase().endsWith('.csv'))
+    .sort();
+
+  const loadedSnapshots = await Promise.all(
+    fileNames.map(async (fileName) => readSnapshot(fileName)),
+  );
+
+  const snapshots = loadedSnapshots
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map((snapshot, index, allSnapshots) => {
+      const previous = index > 0 ? allSnapshots[index - 1] : null;
+      return addMovement(snapshot, previous);
+    });
+
+  const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
+
+  return { snapshots, latest };
+}
+
+async function readSnapshot(fileName: string): Promise<LeaderboardSnapshot> {
+  const filePath = path.join(DATA_DIR, fileName);
+  const [content, fileStat] = await Promise.all([readFile(filePath, 'utf8'), stat(filePath)]);
+  const rows = parse(content, {
+    columns: true,
+    bom: true,
+    skip_empty_lines: true,
+    trim: true,
+  }) as RawCsvRow[];
+
+  const standingsWithoutRanks = rows
+    .map(normalizeRow)
+    .filter((standing): standing is Omit<Standing, 'rank' | 'rankMovement' | 'pointMovement'> => Boolean(standing));
+
+  return {
+    dateKey: getDateKey(fileName, fileStat.mtime),
+    date: getDate(fileName, fileStat.mtime),
+    fileName,
+    standings: rankStandings(standingsWithoutRanks),
+  };
+}
+
+function normalizeRow(row: RawCsvRow): Omit<Standing, 'rank' | 'rankMovement' | 'pointMovement'> | null {
+  const player = row.Jugador?.trim();
+
+  if (!player) {
+    return null;
+  }
+
+  return {
+    player,
+    signs: parseScore(row.Signes),
+    exactResults: parseScore(row.Resultats),
+    goalDifference: parseScore(row['Diferència gols']),
+    points: parseScore(row.Punts),
+  };
+}
+
+function rankStandings(
+  entries: Array<Omit<Standing, 'rank' | 'rankMovement' | 'pointMovement'>>,
+): Standing[] {
+  let previousPoints: number | null = null;
+  let currentRank = 0;
+
+  return [...entries]
+    .sort(compareEntries)
+    .map((entry, index) => {
+      if (entry.points !== previousPoints) {
+        currentRank = index + 1;
+        previousPoints = entry.points;
+      }
+
+      return {
+        ...entry,
+        rank: currentRank,
+        rankMovement: null,
+        pointMovement: null,
+      };
+    });
+}
+
+function compareEntries(
+  a: Omit<Standing, 'rank' | 'rankMovement' | 'pointMovement'>,
+  b: Omit<Standing, 'rank' | 'rankMovement' | 'pointMovement'>,
+): number {
+  return (
+    b.points - a.points ||
+    b.exactResults - a.exactResults ||
+    b.signs - a.signs ||
+    b.goalDifference - a.goalDifference ||
+    a.player.localeCompare(b.player)
+  );
+}
+
+function addMovement(
+  snapshot: LeaderboardSnapshot,
+  previous: LeaderboardSnapshot | null,
+): LeaderboardSnapshot {
+  if (!previous) {
+    return snapshot;
+  }
+
+  const previousByPlayer = new Map(previous.standings.map((standing) => [standing.player, standing]));
+
+  return {
+    ...snapshot,
+    standings: snapshot.standings.map((standing) => {
+      const previousStanding = previousByPlayer.get(standing.player);
+
+      return {
+        ...standing,
+        rankMovement: previousStanding ? previousStanding.rank - standing.rank : null,
+        pointMovement: previousStanding ? standing.points - previousStanding.points : null,
+      };
+    }),
+  };
+}
+
+function parseScore(value: string | undefined): number {
+  const parsed = Number.parseInt(value ?? '0', 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getDateKey(fileName: string, fallback: Date): string {
+  const match = fileName.match(CSV_DATE_PATTERN);
+
+  if (!match) {
+    return fallback.toISOString().slice(0, 10);
+  }
+
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+function getDate(fileName: string, fallback: Date): Date {
+  const match = fileName.match(CSV_DATE_PATTERN);
+
+  if (!match) {
+    return fallback;
+  }
+
+  return new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00Z`);
+}
