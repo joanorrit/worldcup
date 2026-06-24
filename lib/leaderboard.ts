@@ -1,11 +1,23 @@
 import 'server-only';
 
+import { list } from '@vercel/blob';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { parse } from 'csv-parse/sync';
+import {
+  getSafeResultFileName,
+  isResultFileName,
+  RESULTS_BLOB_PREFIX,
+} from '@/lib/result-files';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const CSV_DATE_PATTERN = /(\d{4})_(\d{2})_(\d{2})/;
+
+interface SnapshotSource {
+  fileName: string;
+  content: string;
+  fallbackDate: Date;
+}
 
 export interface RawCsvRow {
   Jugador?: string;
@@ -48,13 +60,22 @@ export function formatDate(date: Date): string {
 }
 
 export async function getLeaderboardData(): Promise<LeaderboardData> {
-  const fileNames = (await readdir(DATA_DIR))
-    .filter((fileName) => fileName.toLowerCase().endsWith('.csv'))
-    .sort();
+  const [localSources, blobSources] = await Promise.all([
+    getLocalSnapshotSources(),
+    getBlobSnapshotSources(),
+  ]);
 
-  const loadedSnapshots = await Promise.all(
-    fileNames.map(async (fileName) => readSnapshot(fileName)),
-  );
+  const sourcesByFileName = new Map<string, SnapshotSource>();
+
+  for (const source of localSources) {
+    sourcesByFileName.set(source.fileName, source);
+  }
+
+  for (const source of blobSources) {
+    sourcesByFileName.set(source.fileName, source);
+  }
+
+  const loadedSnapshots = Array.from(sourcesByFileName.values()).map(readSnapshot);
 
   const snapshots = loadedSnapshots
     .sort((a, b) => a.date.getTime() - b.date.getTime())
@@ -68,10 +89,78 @@ export async function getLeaderboardData(): Promise<LeaderboardData> {
   return { snapshots, latest };
 }
 
-async function readSnapshot(fileName: string): Promise<LeaderboardSnapshot> {
-  const filePath = path.join(DATA_DIR, fileName);
-  const [content, fileStat] = await Promise.all([readFile(filePath, 'utf8'), stat(filePath)]);
-  const rows = parse(content, {
+async function getLocalSnapshotSources(): Promise<SnapshotSource[]> {
+  const fileNames = (await readdir(DATA_DIR))
+    .filter((fileName) => isResultFileName(fileName))
+    .sort();
+
+  return Promise.all(
+    fileNames.map(async (fileName) => {
+      const filePath = path.join(DATA_DIR, fileName);
+      const [content, fileStat] = await Promise.all([readFile(filePath, 'utf8'), stat(filePath)]);
+
+      return {
+        fileName,
+        content,
+        fallbackDate: fileStat.mtime,
+      };
+    }),
+  );
+}
+
+async function getBlobSnapshotSources(): Promise<SnapshotSource[]> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+
+  if (!token) {
+    return [];
+  }
+
+  const sources: SnapshotSource[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const page = await list({
+      cursor,
+      prefix: RESULTS_BLOB_PREFIX,
+      token,
+    });
+
+    const pageSources = await Promise.all(
+      page.blobs.map(async (blob) => {
+        const fileName = getSafeResultFileName(blob.pathname);
+
+        if (!isResultFileName(fileName)) {
+          return null;
+        }
+
+        const response = await fetch(blob.url, { cache: 'no-store' });
+
+        if (!response.ok) {
+          throw new Error(`Could not read uploaded result CSV ${fileName}.`);
+        }
+
+        return {
+          fileName,
+          content: await response.text(),
+          fallbackDate: blob.uploadedAt,
+        };
+      }),
+    );
+
+    for (const source of pageSources) {
+      if (source) {
+        sources.push(source);
+      }
+    }
+
+    cursor = page.cursor;
+  } while (cursor);
+
+  return sources;
+}
+
+function readSnapshot(source: SnapshotSource): LeaderboardSnapshot {
+  const rows = parse(source.content, {
     columns: true,
     bom: true,
     skip_empty_lines: true,
@@ -83,9 +172,9 @@ async function readSnapshot(fileName: string): Promise<LeaderboardSnapshot> {
     .filter((standing): standing is Omit<Standing, 'rank' | 'rankMovement' | 'pointMovement'> => Boolean(standing));
 
   return {
-    dateKey: getDateKey(fileName, fileStat.mtime),
-    date: getDate(fileName, fileStat.mtime),
-    fileName,
+    dateKey: getDateKey(source.fileName, source.fallbackDate),
+    date: getDate(source.fileName, source.fallbackDate),
+    fileName: source.fileName,
     standings: rankStandings(standingsWithoutRanks),
   };
 }

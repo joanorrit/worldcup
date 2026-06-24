@@ -29,7 +29,7 @@ export default async function Home() {
             Leaderboard
           </h1>
           <p className="mt-3 max-w-[38rem] text-[1rem] leading-[1.55] text-[#384251]/90">
-            Browse each standings snapshot chronologically. Add a new CSV to data/ and the latest stage updates automatically.
+            Browse each standings snapshot chronologically. Upload a new results CSV from the admin page and the latest stage updates automatically.
           </p>
         </header>
 
@@ -46,7 +46,7 @@ function EmptyState() {
         <p className="font-mono text-[0.68rem] uppercase tracking-[0.12em] text-[#5C5752]">World Cup Predictions</p>
         <h1 className="mt-4 font-serif text-4xl font-normal italic tracking-[-0.05em]">No leaderboard data</h1>
         <p className="mt-4 text-sm leading-[1.55] text-[#384251]/85">
-          Add a CSV file to the data directory using the expected Resultats_YYYY_MM_DD.csv format.
+          Upload a CSV from the admin page using the expected Resultats_YYYY_MM_DD.csv format.
         </p>
       </div>
     </main>
