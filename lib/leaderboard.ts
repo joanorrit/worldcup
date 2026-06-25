@@ -12,6 +12,9 @@ import {
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const CSV_DATE_PATTERN = /(\d{4})_(\d{2})_(\d{2})/;
+const PLAYER_PENALTIES: Record<string, number> = {
+  riky: 180,
+};
 
 interface SnapshotSource {
   fileName: string;
@@ -33,6 +36,7 @@ export interface Standing {
   exactResults: number;
   goalDifference: number;
   points: number;
+  penalty: number;
   rank: number;
   rankMovement: number | null;
   pointMovement: number | null;
@@ -191,12 +195,15 @@ function normalizeRow(row: RawCsvRow): Omit<Standing, 'rank' | 'rankMovement' | 
     return null;
   }
 
+  const penalty = getPlayerPenalty(player);
+
   return {
     player,
     signs: parseScore(row.Signes),
     exactResults: parseScore(row.Resultats),
     goalDifference: parseScore(row['Diferència gols']),
-    points: parseScore(row.Punts),
+    points: parseScore(row.Punts) - penalty,
+    penalty,
   };
 }
 
@@ -263,6 +270,10 @@ function addMovement(
 function parseScore(value: string | undefined): number {
   const parsed = Number.parseInt(value ?? '0', 10);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getPlayerPenalty(player: string): number {
+  return PLAYER_PENALTIES[player.trim().toLowerCase()] ?? 0;
 }
 
 function getDateKey(fileName: string, fallback: Date): string {

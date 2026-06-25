@@ -156,7 +156,7 @@ function PodiumLeader({
         </div>
 
         <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
-          <PodiumMetric label="Points" value={formatNumber(standing.points)} />
+          <PodiumMetric label="Points" value={formatNumber(standing.points)} penalty={standing.penalty} />
           <PodiumMetric label="Signes" value={String(standing.signs)} />
           <PodiumMetric label="Resultats" value={String(standing.exactResults)} />
         </dl>
@@ -165,11 +165,12 @@ function PodiumLeader({
   );
 }
 
-function PodiumMetric({ label, value }: { label: string; value: string }) {
+function PodiumMetric({ label, value, penalty = 0 }: { label: string; value: string; penalty?: number }) {
   return (
     <div className="border border-[#8B847D2E] px-2 py-2">
       <dt className="font-mono text-[0.55rem] uppercase leading-none tracking-[0.08em] text-[#5C5752]">{label}</dt>
       <dd className="mt-1 text-sm font-semibold tabular-nums text-[#252F3D]">{value}</dd>
+      <PenaltyBadge penalty={penalty} className="mt-1 justify-center" />
     </div>
   );
 }
@@ -218,8 +219,9 @@ function PlayerRow({ standing }: { standing: Standing }) {
         <MovementBadge movement={standing.rankMovement} />
       </div>
 
-      <div className="leaderboard-player-points text-right text-lg font-semibold leading-none tabular-nums text-[#252F3D]">
-        {formatNumber(standing.points)}
+      <div className="leaderboard-player-points text-right leading-none tabular-nums">
+        <span className="block text-lg font-semibold text-[#252F3D]">{formatNumber(standing.points)}</span>
+        <PenaltyBadge penalty={standing.penalty} className="mt-1 justify-end" />
       </div>
 
       <div className="leaderboard-player-delta text-center">
@@ -284,6 +286,18 @@ function MovementBadge({ movement }: { movement: number | null }) {
   }
 
   return <span className="border border-[#8B847D40] bg-[#EBE7E4]/45 px-2 py-1 font-mono text-[0.62rem] uppercase tracking-[0.08em] text-[#5C5752]">same</span>;
+}
+
+function PenaltyBadge({ penalty, className = "" }: { penalty: number; className?: string }) {
+  if (penalty <= 0) {
+    return null;
+  }
+
+  return (
+    <span className={["flex font-mono text-[0.62rem] font-medium uppercase tracking-[0.08em] text-[#844F3B]", className].filter(Boolean).join(" ")}>
+      -{formatNumber(penalty)} penalty
+    </span>
+  );
 }
 
 function PointDelta({ value }: { value: number | null }) {
