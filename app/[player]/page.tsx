@@ -33,8 +33,8 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
 
   return (
     <main className="min-h-screen bg-[#EBE7E4] text-[#252F3D]">
-      <div className="mx-auto w-full max-w-[80rem] px-4 pb-12 pt-6 sm:px-8 sm:pb-16 sm:pt-10">
-        <header className="max-w-[44rem] py-4 sm:py-6">
+      <div className="player-page-container mx-auto w-full max-w-[80rem] px-4 pb-12 pt-6 sm:px-8 sm:pb-16 sm:pt-10">
+        <header className="player-page-header max-w-[44rem] py-4 sm:py-6">
           <p className="font-mono text-[0.68rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">Player predictions</p>
           <h1 className="mt-4 font-serif text-[clamp(2.75rem,6vw,4.25rem)] font-normal italic leading-[0.9] tracking-[-0.06em] text-[#252F3D]">
             {playerName}
@@ -47,7 +47,7 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section className="player-groups-grid grid gap-4 lg:grid-cols-2">
           {bets.groupStageGroups.map((group) => (
             <GroupCard key={group.id} group={group} />
           ))}
@@ -69,7 +69,7 @@ function KnockoutPredictions({ sections }: { sections: KnockoutSection[] }) {
   }
 
   return (
-    <section className="mt-8 border border-[#8B847D59] bg-[#F4F2F0] shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
+    <section className="player-knockout-section mt-8 border border-[#8B847D59] bg-[#F4F2F0] shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
       <div className="border-b border-[#8B847D40] bg-[#EBE7E4]/55 px-4 py-3 sm:px-5">
         <h2 className="font-mono text-[0.72rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">Eliminatorias</h2>
       </div>
@@ -85,7 +85,7 @@ function KnockoutPredictions({ sections }: { sections: KnockoutSection[] }) {
 
 function KnockoutRound({ section }: { section: KnockoutSection }) {
   return (
-    <article className="border border-[#8B847D40] bg-[#F3F2F0]">
+    <article className="player-knockout-round border border-[#8B847D40] bg-[#F3F2F0]">
       <div className="flex items-baseline justify-between gap-4 border-b border-[#8B847D40] px-4 py-3 sm:px-5">
         <h3 className="font-mono text-[0.66rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">{section.title}</h3>
         <p className="font-mono text-[0.6rem] uppercase leading-none tracking-[0.08em] text-[#5C5752]">
@@ -104,13 +104,13 @@ function KnockoutRound({ section }: { section: KnockoutSection }) {
 
 function KnockoutMatchRow({ match }: { match: PlayerBetMatch }) {
   return (
-    <div className="grid grid-cols-[3.5rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] items-center px-4 py-2 text-sm transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
-      <span className="font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[#5C5752]">#{match.round}</span>
-      <span className="min-w-0 truncate font-medium text-[#252F3D]">{match.homeTeam}</span>
-      <span className="text-center font-semibold tabular-nums text-[#252F3D]">
+    <div className="player-match-row player-knockout-match-row grid grid-cols-[3.5rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] items-center px-4 py-2 text-sm transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
+      <span className="player-match-round font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[#5C5752]">#{match.round}</span>
+      <span className="player-match-home min-w-0 truncate font-medium text-[#252F3D]">{match.homeTeam}</span>
+      <span className="player-match-score text-center font-semibold tabular-nums text-[#252F3D]">
         {match.homeGoals} - {match.awayGoals}
       </span>
-      <span className="min-w-0 truncate font-medium text-[#252F3D]">{match.awayTeam}</span>
+      <span className="player-match-away min-w-0 truncate font-medium text-[#252F3D]">{match.awayTeam}</span>
     </div>
   );
 }
@@ -121,7 +121,7 @@ function HonorRoll({ items }: { items: HonorRollItem[] }) {
   }
 
   return (
-    <section className="mt-8 border border-[#8B847D59] bg-[#F4F2F0] shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
+    <section className="player-honor-section mt-8 border border-[#8B847D59] bg-[#F4F2F0] shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
       <div className="border-b border-[#8B847D40] bg-[#EBE7E4]/55 px-4 py-3 sm:px-5">
         <h2 className="font-mono text-[0.72rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">Cuadro de honor</h2>
       </div>
@@ -137,7 +137,7 @@ function HonorRoll({ items }: { items: HonorRollItem[] }) {
 
 function HonorRollItemCard({ item }: { item: HonorRollItem }) {
   return (
-    <article className="border-b border-[#8B847D40] px-4 py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:last:border-r-0">
+    <article className="player-honor-card border-b border-[#8B847D40] px-4 py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:last:border-r-0">
       <p className="font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">{item.label}</p>
       <p className="mt-2 truncate text-xl font-semibold tracking-[-0.03em] text-[#252F3D]">{item.value}</p>
     </article>
@@ -161,7 +161,7 @@ function EmptyPlayerPage() {
 
 function GroupCard({ group }: { group: PlayerBetGroup }) {
   return (
-    <article className="border border-[#8B847D59] bg-[#F4F2F0] shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
+    <article className="player-group-card border border-[#8B847D59] bg-[#F4F2F0] shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
       <div className="flex items-baseline justify-between gap-4 border-b border-[#8B847D40] bg-[#EBE7E4]/55 px-4 py-3 sm:px-5">
         <h2 className="font-mono text-[0.72rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">{group.title}</h2>
         <p className="font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">
@@ -177,8 +177,8 @@ function GroupCard({ group }: { group: PlayerBetGroup }) {
 
 function GroupStandings({ standings }: { standings: GroupStanding[] }) {
   return (
-    <div className="border-b border-[#8B847D40]">
-      <div className="grid grid-cols-[2.5rem_minmax(8rem,1fr)_3rem_2.25rem_2.25rem_2.25rem_2.25rem_2.5rem_2.5rem_2.75rem] px-4 py-2 text-left font-mono text-[0.58rem] uppercase leading-none tracking-[0.08em] text-[#5C5752] sm:px-5">
+    <div className="player-standings border-b border-[#8B847D40]">
+      <div className="player-standings-head grid grid-cols-[2.5rem_minmax(8rem,1fr)_3rem_2.25rem_2.25rem_2.25rem_2.25rem_2.5rem_2.5rem_2.75rem] px-4 py-2 text-left font-mono text-[0.58rem] uppercase leading-none tracking-[0.08em] text-[#5C5752] sm:px-5">
         <span className="text-center">Pos</span>
         <span>Team</span>
         <span className="text-right">Pts</span>
@@ -204,17 +204,19 @@ function StandingRow({ standing }: { standing: GroupStanding }) {
   const isQualified = standing.position === '1' || standing.position === '2';
 
   return (
-    <div className="grid grid-cols-[2.5rem_minmax(8rem,1fr)_3rem_2.25rem_2.25rem_2.25rem_2.25rem_2.5rem_2.5rem_2.75rem] items-center bg-[#F3F2F0] px-4 py-2 text-sm text-[#252F3D] transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
-      <span className={isQualified ? 'text-center font-semibold text-[#7A5A22]' : 'text-center font-medium text-[#5C5752]'}>{standing.position}</span>
-      <span className="min-w-0 truncate font-medium">{standing.team}</span>
-      <span className="text-right font-semibold tabular-nums">{standing.points}</span>
-      <NumberCell value={standing.played} />
-      <NumberCell value={standing.won} />
-      <NumberCell value={standing.drawn} />
-      <NumberCell value={standing.lost} />
-      <NumberCell value={standing.goalsFor} />
-      <NumberCell value={standing.goalsAgainst} />
-      <NumberCell value={standing.goalDifference} />
+    <div className="player-standing-row grid grid-cols-[2.5rem_minmax(8rem,1fr)_3rem_2.25rem_2.25rem_2.25rem_2.25rem_2.5rem_2.5rem_2.75rem] items-center bg-[#F3F2F0] px-4 py-2 text-sm text-[#252F3D] transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
+      <span className={isQualified ? 'player-standing-position text-center font-semibold text-[#7A5A22]' : 'player-standing-position text-center font-medium text-[#5C5752]'}>{standing.position}</span>
+      <span className="player-standing-team min-w-0 truncate font-medium">{standing.team}</span>
+      <span className="player-standing-points text-right font-semibold tabular-nums">{standing.points}</span>
+      <div className="player-standing-secondary-stats">
+        <NumberCell label="J" value={standing.played} />
+        <NumberCell label="G" value={standing.won} />
+        <NumberCell label="E" value={standing.drawn} />
+        <NumberCell label="P" value={standing.lost} />
+        <NumberCell label="GF" value={standing.goalsFor} />
+        <NumberCell label="GC" value={standing.goalsAgainst} />
+        <NumberCell label="DG" value={standing.goalDifference} />
+      </div>
     </div>
   );
 }
@@ -222,7 +224,7 @@ function StandingRow({ standing }: { standing: GroupStanding }) {
 function GroupMatches({ matches }: { matches: PlayerBetMatch[] }) {
   return (
     <div>
-      <div className="grid grid-cols-[3rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] px-4 py-2 text-left font-mono text-[0.58rem] uppercase leading-none tracking-[0.08em] text-[#5C5752] sm:px-5">
+      <div className="player-match-head grid grid-cols-[3rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] px-4 py-2 text-left font-mono text-[0.58rem] uppercase leading-none tracking-[0.08em] text-[#5C5752] sm:px-5">
         <span>Rnd</span>
         <span>Home</span>
         <span className="text-center">Score</span>
@@ -240,26 +242,31 @@ function GroupMatches({ matches }: { matches: PlayerBetMatch[] }) {
 
 function MatchRow({ match }: { match: PlayerBetMatch }) {
   return (
-    <div className="grid grid-cols-[3rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] items-center bg-[#F3F2F0] px-4 py-2 text-sm transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
-      <span className="font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[#5C5752]">{match.round}</span>
-      <span className="min-w-0 truncate font-medium text-[#252F3D]">{match.homeTeam}</span>
-      <span className="text-center font-semibold tabular-nums text-[#252F3D]">
+    <div className="player-match-row grid grid-cols-[3rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] items-center bg-[#F3F2F0] px-4 py-2 text-sm transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
+      <span className="player-match-round font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[#5C5752]">{match.round}</span>
+      <span className="player-match-home min-w-0 truncate font-medium text-[#252F3D]">{match.homeTeam}</span>
+      <span className="player-match-score text-center font-semibold tabular-nums text-[#252F3D]">
         {match.homeGoals} - {match.awayGoals}
       </span>
-      <span className="min-w-0 truncate font-medium text-[#252F3D]">{match.awayTeam}</span>
+      <span className="player-match-away min-w-0 truncate font-medium text-[#252F3D]">{match.awayTeam}</span>
     </div>
   );
 }
 
-function NumberCell({ value }: { value: string }) {
-  return <span className="text-right tabular-nums text-[#384251]/90">{value}</span>;
+function NumberCell({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="player-number-cell text-right tabular-nums text-[#384251]/90">
+      <span className="player-number-label hidden font-mono uppercase leading-none tracking-[0.08em] text-[#5C5752]">{label}</span>
+      <span>{value}</span>
+    </span>
+  );
 }
 
 function BackButton({ className = '' }: { className?: string }) {
   return (
     <Link
       href="/"
-      className={`${className} inline-flex h-10 items-center border border-[#8B847D59] bg-transparent px-4 font-mono text-[0.68rem] uppercase leading-none tracking-[0.1em] text-[#252F3D] transition hover:border-[#5C575280] hover:bg-[#EBE7E4]`}
+      className={`${className} back-to-leaderboard inline-flex h-10 items-center border border-[#8B847D59] bg-transparent px-4 font-mono text-[0.68rem] uppercase leading-none tracking-[0.1em] text-[#252F3D] transition hover:border-[#5C575280] hover:bg-[#EBE7E4]`}
     >
       Back to leaderboard
     </Link>

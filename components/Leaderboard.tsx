@@ -64,7 +64,7 @@ export function Leaderboard({ snapshots, initialIndex }: LeaderboardProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-[72rem] border border-[#8B847D59] bg-[#F4F2F0] text-center shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
+    <section className="leaderboard-shell mx-auto w-full max-w-[72rem] border border-[#8B847D59] bg-[#F4F2F0] text-center shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
       <LeaderboardHeader
         canGoNext={canGoNext}
         canGoPrevious={canGoPrevious}
@@ -103,7 +103,7 @@ function LeaderboardHeader({
   snapshotCount: number;
 }) {
   return (
-    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-3 border-b border-[#8B847D40] px-4 py-3 sm:px-6 sm:py-4">
+    <div className="leaderboard-snapshot-nav grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-3 border-b border-[#8B847D40] px-4 py-3 sm:px-6 sm:py-4">
       <ArrowButton label="Previous snapshot" direction="previous" disabled={!canGoPrevious} onClick={onPrevious} />
 
       <div className="min-w-0 text-center">
@@ -124,7 +124,7 @@ function LeaderboardHeader({
 
 function PodiumLeaders({ standings }: { standings: Standing[] }) {
   return (
-    <div className="grid border-b border-[#8B847D40] bg-[#EBE7E4]/45 text-left sm:grid-cols-3">
+    <div className="leaderboard-podium grid border-b border-[#8B847D40] bg-[#EBE7E4]/45 text-left sm:grid-cols-3">
       {standings.map((standing, index) => (
         <PodiumLeader key={standing.player} standing={standing} logo={podiumLogos[index]} />
       ))}
@@ -140,7 +140,7 @@ function PodiumLeader({
   logo: { rank: number; src: string; alt: string };
 }) {
   return (
-    <article className="grid grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-3 border-b border-[#8B847D40] px-4 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:last:border-r-0">
+    <article className="leaderboard-podium-card grid grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-3 border-b border-[#8B847D40] px-4 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:last:border-r-0">
       <div className="relative h-12 w-12 overflow-hidden">
         <Image src={logo.src} alt={logo.alt} fill sizes="48px" className="object-contain" priority={logo.rank === 1} />
       </div>
@@ -176,9 +176,9 @@ function PodiumMetric({ label, value }: { label: string; value: string }) {
 
 function PlayerRowList({ standings }: { standings: Standing[] }) {
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="min-w-[48rem]">
-        <div className="grid grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem] border-b border-[#8B847D40] bg-[#EBE7E4]/55 px-4 py-2 text-left font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">
+    <div className="leaderboard-list-scroll w-full overflow-x-auto">
+      <div className="leaderboard-list-inner min-w-[48rem]">
+        <div className="leaderboard-table-head grid grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem] border-b border-[#8B847D40] bg-[#EBE7E4]/55 px-4 py-2 text-left font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">
           <span className="text-center">Rank</span>
           <span>Player</span>
           <span className="text-center">Move</span>
@@ -203,38 +203,45 @@ function PlayerRow({ standing }: { standing: Standing }) {
   const isLeader = standing.rank === 1;
 
   return (
-    <article className="grid grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem] items-center bg-[#F3F2F0] px-4 py-2 text-left transition-colors hover:bg-[#EBE7E4]/65">
-      <div className={isLeader ? 'text-center text-lg font-semibold leading-none text-[#7A5A22]' : 'text-center text-lg font-semibold leading-none text-[#5C5752]'}>
+    <article className="leaderboard-player-row grid grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem] items-center bg-[#F3F2F0] px-4 py-2 text-left transition-colors hover:bg-[#EBE7E4]/65">
+      <div className={isLeader ? 'leaderboard-player-rank text-center text-lg font-semibold leading-none text-[#7A5A22]' : 'leaderboard-player-rank text-center text-lg font-semibold leading-none text-[#5C5752]'}>
         #{standing.rank}
       </div>
 
-      <h2 className="truncate pr-3 text-base font-medium leading-tight">
+      <h2 className="leaderboard-player-name truncate pr-3 text-base font-medium leading-tight">
         <Link href={getPlayerPath(standing.player)} className="truncate text-[#252F3D] transition-colors hover:text-[#4B607C]">
           {standing.player}
         </Link>
       </h2>
 
-      <div className="flex justify-center">
+      <div className="leaderboard-player-movement flex justify-center">
         <MovementBadge movement={standing.rankMovement} />
       </div>
 
-      <div className="text-right text-lg font-semibold leading-none tabular-nums text-[#252F3D]">
+      <div className="leaderboard-player-points text-right text-lg font-semibold leading-none tabular-nums text-[#252F3D]">
         {formatNumber(standing.points)}
       </div>
 
-      <div className="text-center">
+      <div className="leaderboard-player-delta text-center">
         <PointDelta value={standing.pointMovement} />
       </div>
 
-      <PlayerRowStat value={standing.signs} />
-      <PlayerRowStat value={standing.exactResults} />
-      <PlayerRowStat value={standing.goalDifference} />
+      <div className="leaderboard-player-stats">
+        <PlayerRowStat label="Signes" value={standing.signs} />
+        <PlayerRowStat label="Resultats" value={standing.exactResults} />
+        <PlayerRowStat label="Diff. gols" value={standing.goalDifference} />
+      </div>
     </article>
   );
 }
 
-function PlayerRowStat({ value }: { value: number }) {
-  return <div className="text-center text-sm font-medium tabular-nums text-[#384251]/90">{value}</div>;
+function PlayerRowStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="leaderboard-row-stat text-center text-sm font-medium tabular-nums text-[#384251]/90">
+      <span className="leaderboard-row-stat-label hidden font-mono uppercase leading-none tracking-[0.08em] text-[#5C5752]">{label}</span>
+      <span>{value}</span>
+    </div>
+  );
 }
 
 function ArrowButton({

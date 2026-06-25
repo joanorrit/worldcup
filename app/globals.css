@@ -34,3 +34,271 @@ textarea {
   color: #ffffff;
   background: #4b607c;
 }
+
+.leaderboard-player-stats,
+.player-standing-secondary-stats {
+  display: contents;
+}
+
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .home-page-container,
+  .player-page-container {
+    padding: 0.75rem 0.75rem 2rem;
+  }
+
+  .home-page-header,
+  .player-page-header {
+    align-items: flex-start;
+    padding-block: 0.75rem 1rem;
+    text-align: left;
+  }
+
+  .home-page-header h1,
+  .player-page-header h1 {
+    font-size: clamp(2.25rem, 15vw, 3rem);
+    letter-spacing: 0;
+  }
+
+  .home-page-header p:last-child {
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .leaderboard-shell {
+    border-inline: 0;
+    margin-inline: -0.75rem;
+    width: calc(100% + 1.5rem);
+  }
+
+  .leaderboard-snapshot-nav {
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .leaderboard-podium {
+    display: block;
+  }
+
+  .leaderboard-podium-card {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .leaderboard-podium-card > .relative {
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+
+  .leaderboard-list-scroll {
+    overflow-x: visible;
+  }
+
+  .leaderboard-list-inner {
+    min-width: 0;
+  }
+
+  .leaderboard-table-head {
+    display: none;
+  }
+
+  .leaderboard-player-row {
+    grid-template-areas:
+      "rank name points"
+      "rank movement delta"
+      "stats stats stats";
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+    padding: 0.875rem 0.75rem;
+  }
+
+  .leaderboard-player-rank {
+    align-self: center;
+    grid-area: rank;
+    text-align: left;
+  }
+
+  .leaderboard-player-name {
+    grid-area: name;
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .leaderboard-player-points {
+    grid-area: points;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .leaderboard-player-points::after {
+    color: #5C5752;
+    content: " pts";
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.62rem;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .leaderboard-player-movement {
+    grid-area: movement;
+    justify-content: flex-start;
+  }
+
+  .leaderboard-player-delta {
+    grid-area: delta;
+    min-height: 1rem;
+    text-align: right;
+  }
+
+  .leaderboard-player-stats {
+    display: grid;
+    gap: 0.5rem;
+    grid-area: stats;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 0.125rem;
+  }
+
+  .leaderboard-row-stat {
+    border: 1px solid #8B847D2E;
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.45rem 0.35rem;
+  }
+
+  .leaderboard-row-stat-label {
+    display: block;
+    font-size: 0.52rem;
+  }
+
+  .player-page-header > div {
+    align-items: stretch;
+  }
+
+  .back-to-leaderboard {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .player-groups-grid {
+    gap: 0.75rem;
+  }
+
+  .player-group-card > div:first-child,
+  .player-knockout-section > div:first-child,
+  .player-knockout-round > div:first-child,
+  .player-honor-section > div:first-child {
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .player-standings-head,
+  .player-match-head {
+    display: none;
+  }
+
+  .player-standing-row {
+    grid-template-areas:
+      "position team points"
+      "stats stats stats";
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    column-gap: 0.625rem;
+    row-gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .player-standing-position {
+    grid-area: position;
+  }
+
+  .player-standing-team {
+    grid-area: team;
+    min-width: 0;
+  }
+
+  .player-standing-points {
+    grid-area: points;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .player-standing-points::after {
+    color: #5C5752;
+    content: " pts";
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.55rem;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .player-standing-secondary-stats {
+    display: grid;
+    gap: 0.35rem;
+    grid-area: stats;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .player-number-cell {
+    border: 1px solid #8B847D2E;
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+    padding: 0.38rem 0.2rem;
+    text-align: center;
+  }
+
+  .player-number-label {
+    display: block;
+    font-size: 0.5rem;
+  }
+
+  .player-match-row {
+    grid-template-areas:
+      "round round round"
+      "home score away";
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    column-gap: 0.5rem;
+    row-gap: 0.35rem;
+    padding: 0.7rem 0.75rem;
+  }
+
+  .player-match-round {
+    grid-area: round;
+    font-size: 0.58rem;
+  }
+
+  .player-match-home,
+  .player-match-away {
+    line-height: 1.2;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .player-match-home {
+    grid-area: home;
+    text-align: right;
+  }
+
+  .player-match-score {
+    align-self: center;
+    border: 1px solid #8B847D40;
+    grid-area: score;
+    padding: 0.32rem 0.45rem;
+    white-space: nowrap;
+  }
+
+  .player-match-away {
+    grid-area: away;
+  }
+
+  .player-honor-card p:last-child {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+}
