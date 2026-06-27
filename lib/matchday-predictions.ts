@@ -152,6 +152,10 @@ function getGuessesForMatch(
     })));
   }
 
+  if (!hasPlaceholderTeam(match)) {
+    return [];
+  }
+
   const dateTimeKey = getDateTimeKey(match.dateKey, match.displayTime);
   const fallbackGuesses = indexes.playerSets.flatMap(({ player, predictions }) => {
     const prediction = predictions.matchesByDateTime.get(dateTimeKey)?.[occurrenceIndex];
@@ -255,6 +259,10 @@ function normalizeTeamName(team: string): string {
   return TEAM_ALIASES[normalized] ?? normalized;
 }
 
+function hasPlaceholderTeam(match: WorldCupMatch): boolean {
+  return normalizeTeamName(match.homeTeam) === 'tbd' || normalizeTeamName(match.awayTeam) === 'tbd';
+}
+
 function sortGuesses(guesses: MatchdayGuess[]): MatchdayGuess[] {
   return [...guesses].sort((a, b) => a.player.localeCompare(b.player));
 }
@@ -276,6 +284,7 @@ const TEAM_ALIASES: Record<string, string> = {
   'bosnia y herzegovina': 'bosnia and herzegovina',
   brasil: 'brazil',
   'cabo verde': 'cape verde',
+  'cape verde islands': 'cape verde',
   camerun: 'cameroon',
   catar: 'qatar',
   'corea del norte': 'north korea',

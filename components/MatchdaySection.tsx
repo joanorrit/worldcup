@@ -194,8 +194,6 @@ function MatchRow({
 }
 
 function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: MatchdayMatch }) {
-  const showTeams = shouldShowGuessTeams(match, guesses);
-
   if (guesses.length === 0) {
     return (
       <p className="border-t border-[#8B847D2E] px-4 py-3 text-sm leading-[1.45] text-[#5C5752] sm:px-5">
@@ -214,7 +212,7 @@ function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: Matchd
           >
             <span className="min-w-0 truncate font-medium text-[#252F3D]">{guess.player}</span>
             <span className="min-w-0 truncate text-right font-mono text-[0.78rem] tabular-nums text-[#384251]">
-              {formatGuess(guess, showTeams)}
+              {formatGuess(guess)}
             </span>
           </div>
         ))}
@@ -279,26 +277,8 @@ function hasVisibleScore(match: MatchdayMatch): boolean {
   );
 }
 
-function shouldShowGuessTeams(match: MatchdayMatch, guesses: MatchdayGuess[]): boolean {
-  return (
-    isPlaceholderTeam(match.homeTeam) ||
-    isPlaceholderTeam(match.awayTeam) ||
-    guesses.some((guess) => guess.homeTeam !== match.homeTeam || guess.awayTeam !== match.awayTeam)
-  );
-}
-
-function isPlaceholderTeam(team: string): boolean {
-  return /^(tbd|winner\b|runner-up\b|runner up\b|to be determined)$/i.test(team.trim());
-}
-
-function formatGuess(guess: MatchdayGuess, showTeams: boolean): string {
-  const score = `${guess.homeGoals || '-'}-${guess.awayGoals || '-'}`;
-
-  if (!showTeams) {
-    return score;
-  }
-
-  return `${guess.homeTeam} ${score} ${guess.awayTeam}`;
+function formatGuess(guess: MatchdayGuess): string {
+  return `${guess.homeGoals || '-'}-${guess.awayGoals || '-'}`;
 }
 
 function formatDateKey(
