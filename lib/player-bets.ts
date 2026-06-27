@@ -17,6 +17,8 @@ const KNOCKOUT_SECTION_CONFIGS = [
   { label: 'Final', title: 'Final' },
 ];
 
+type DateOrder = 'month-first' | 'day-first';
+
 export interface PlayerBetMatch {
   date: Date;
   dateLabel: string;
@@ -87,17 +89,18 @@ export async function getPlayerBets(player: string): Promise<PlayerBets | null> 
     relax_column_count: true,
     skip_empty_lines: false,
   }) as string[][];
+  const dateOrder = detectDateOrder(rows);
 
   return {
     player,
-    matches: rows.map(normalizeMatchRow).filter((match): match is PlayerBetMatch => Boolean(match)),
-    groupStageGroups: extractGroupStageGroups(rows),
-    knockoutSections: extractKnockoutSections(rows),
+    matches: rows.map((row) => normalizeMatchRow(row, dateOrder)).filter((match): match is PlayerBetMatch => Boolean(match)),
+    groupStageGroups: extractGroupStageGroups(rows, dateOrder),
+    knockoutSections: extractKnockoutSections(rows, dateOrder),
     honorRoll: extractHonorRoll(rows),
   };
 }
 
-function extractGroupStageGroups(rows: string[][]) {
+function extractGroupStageGroups(rows: string[][], dateOrder: DateOrder) {
   return rows.flatMap((row, rowIndex) => {
     const groupMatch = getCell(row, 35).match(GROUP_LABEL_PATTERN);
 
@@ -108,7 +111,7 @@ function extractGroupStageGroups(rows: string[][]) {
     const id = groupMatch[1];
     const matches = rows
       .slice(rowIndex, rowIndex + 6)
-      .map(normalizeMatchRow)
+      .map((matchRow) => normalizeMatchRow(matchRow, dateOrder))
       .filter((match): match is PlayerBetMatch => Boolean(match));
 
     return {
@@ -124,7 +127,7 @@ function extractGroupStageGroups(rows: string[][]) {
 }
 
 
-function extractKnockoutSections(rows: string[][]): KnockoutSection[] {
+function extractKnockoutSections(rows: string[][], dateOrder: DateOrder): KnockoutSection[] {
   const labelRows = KNOCKOUT_SECTION_CONFIGS.map((config) => ({
     ...config,
     rowIndex: rows.findIndex((row) => getCell(row, 22) === config.label),
@@ -135,7 +138,7 @@ function extractKnockoutSections(rows: string[][]): KnockoutSection[] {
     const endIndex = nextConfig?.rowIndex ?? rows.length;
     const matches = rows
       .slice(config.rowIndex + 1, endIndex)
-      .map(normalizeMatchRow)
+      .map((matchRow) => normalizeMatchRow(matchRow, dateOrder))
       .filter((match): match is PlayerBetMatch => Boolean(match));
 
     return {
@@ -162,7 +165,7 @@ function extractHonorRoll(rows: string[][]): HonorRollItem[] {
     .filter((item) => item.label && item.value);
 }
 
-function normalizeMatchRow(row: string[]): PlayerBetMatch | null {
+function normalizeMatchRow(row: string[], dateOrder: DateOrder): PlayerBetMatch | null {
   const rawDate = getCell(row, 23);
   const homeTeam = getCell(row, 26);
   const awayTeam = getCell(row, 31);
@@ -171,7 +174,7 @@ function normalizeMatchRow(row: string[]): PlayerBetMatch | null {
     return null;
   }
 
-  const date = parseCsvDate(rawDate);
+  const date = parseCsvDate(rawDate, dateOrder);
   const round = getCell(row, 25);
 
   return {
@@ -213,8 +216,36 @@ function getCell(row: string[], index: number) {
   return row[index]?.trim() ?? '';
 }
 
-function parseCsvDate(value: string) {
-  const [month, day, year] = value.split('/').map(Number);
+function detectDateOrder(rows: string[][]): DateOrder {
+  let hasMonthFirstDate = false;
+  let hasDayFirstDate = false;
+
+  for (const row of rows) {
+    const value = getCell(row, 23);
+
+    if (!DATE_PATTERN.test(value)) {
+      continue;
+    }
+
+    const [first, second] = value.split('/').map(Number);
+
+    if (first > 12 && second <= 12) {
+      hasDayFirstDate = true;
+    }
+
+    if (second > 12 && first <= 12) {
+      hasMonthFirstDate = true;
+    }
+  }
+
+  return hasDayFirstDate && !hasMonthFirstDate ? 'day-first' : 'month-first';
+}
+
+function parseCsvDate(value: string, dateOrder: DateOrder) {
+  const [first, second, year] = value.split('/').map(Number);
+  const month = dateOrder === 'day-first' ? second : first;
+  const day = dateOrder === 'day-first' ? first : second;
+
   return new Date(Date.UTC(year, month - 1, day));
 }
 
