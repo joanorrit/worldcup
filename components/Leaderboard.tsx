@@ -20,8 +20,8 @@ interface LeaderboardProps {
 const numberFormatter = new Intl.NumberFormat('en-US');
 
 const podiumLogos = [
-  { rank: 1, src: '/logos/platinum.png', alt: 'Platinum trophy' },
-  { rank: 2, src: '/logos/gold.png', alt: 'Gold trophy' },
+  { rank: 1, src: '/logos/gold.png', alt: 'Gold trophy' },
+  { rank: 2, src: '/logos/platinum.png', alt: 'Platinum trophy' },
   { rank: 3, src: '/logos/bronze.png', alt: 'Bronze trophy' },
 ];
 
