@@ -1,11 +1,17 @@
 import { Leaderboard, type LeaderboardSnapshotView } from '@/components/Leaderboard';
+import { MatchdaySection } from '@/components/MatchdaySection';
 import { formatDate, getLeaderboardData } from '@/lib/leaderboard';
+import { getHomepageMatchdays } from '@/lib/matchday-predictions';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function Home() {
-  const { snapshots, latest } = await getLeaderboardData();
+  const [leaderboardData, matchdayData] = await Promise.all([
+    getLeaderboardData(),
+    getHomepageMatchdays(),
+  ]);
+  const { snapshots, latest } = leaderboardData;
 
   if (!latest) {
     return <EmptyState />;
@@ -23,17 +29,24 @@ export default async function Home() {
       <div className="home-page-container mx-auto flex w-full max-w-[76rem] flex-col items-center px-4 pb-8 pt-4 text-center sm:px-6 sm:pb-10 sm:pt-6 lg:px-8">
         <header className="home-page-header mx-auto flex max-w-[48rem] flex-col items-center py-4 sm:py-6">
           <p className="inline-flex border border-[#8B847D59] px-2 py-1 font-mono text-[0.68rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">
-            World Cup Predictions
+            World Cup 2026
           </p>
           <h1 className="mt-3 font-serif text-[clamp(2.75rem,6vw,4.25rem)] font-normal italic leading-[0.9] tracking-[-0.06em] text-[#252F3D]">
-            Leaderboard
+            World Cup Predictions
           </h1>
           <p className="mt-3 max-w-[38rem] text-[1rem] leading-[1.55] text-[#384251]/90">
-            Browse each standings snapshot chronologically. Upload a new results CSV from the admin page and the latest stage updates automatically.
+            Follow the current matchday, compare everyone&apos;s guesses, and browse each leaderboard snapshot chronologically.
           </p>
         </header>
 
-        <Leaderboard snapshots={snapshotViews} />
+        <MatchdaySection data={matchdayData} />
+
+        <section className="mx-auto w-full max-w-[72rem] text-left">
+          <h2 className="mb-3 font-mono text-[0.72rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">
+            Leaderboard
+          </h2>
+          <Leaderboard snapshots={snapshotViews} />
+        </section>
       </div>
     </main>
   );

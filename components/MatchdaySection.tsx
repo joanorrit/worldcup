@@ -1,0 +1,312 @@
+'use client';
+
+import { useState, type ReactNode } from 'react';
+import type {
+  HomepageMatchdayData,
+  MatchdayGuess,
+  MatchdayMatch,
+  MatchdayView,
+} from '@/lib/matchday-types';
+
+interface MatchdaySectionProps {
+  data: HomepageMatchdayData;
+}
+
+export function MatchdaySection({ data }: MatchdaySectionProps) {
+  const initialDateKey = getSafeInitialDateKey(data);
+  const [selectedDateKey, setSelectedDateKey] = useState(initialDateKey);
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+
+  const selectedIndex = Math.max(
+    data.matchdays.findIndex((matchday) => matchday.dateKey === selectedDateKey),
+    0,
+  );
+  const selectedMatchday = data.matchdays[selectedIndex] ?? null;
+  const canGoPrevious = selectedIndex > 0;
+  const canGoNext = selectedIndex >= 0 && selectedIndex < data.matchdays.length - 1;
+
+  function selectDate(dateKey: string) {
+    setSelectedDateKey(dateKey);
+    setExpandedMatchId(null);
+  }
+
+  function selectByOffset(offset: -1 | 1) {
+    const nextMatchday = data.matchdays[selectedIndex + offset];
+
+    if (nextMatchday) {
+      selectDate(nextMatchday.dateKey);
+    }
+  }
+
+  return (
+    <section className="matchday-shell mx-auto mb-6 w-full max-w-[72rem] border border-[#8B847D59] bg-[#F4F2F0] text-left shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
+      <div className="border-b border-[#8B847D40] px-4 py-3 sm:px-5">
+        <p className="font-mono text-[0.68rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">
+          Matchday
+        </p>
+
+        {selectedMatchday ? (
+          <MatchdayTitle matchday={selectedMatchday} todayDateKey={data.todayDateKey} />
+        ) : (
+          <div className="mt-2">
+            <h2 className="text-lg font-semibold leading-tight tracking-[-0.02em] text-[#252F3D]">
+              Match schedule unavailable
+            </h2>
+            <p className="mt-1 text-sm leading-[1.45] text-[#5C5752]">
+              Sync World Cup fixtures to show matchdays and guesses.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {data.matchdays.length > 0 ? (
+        <>
+          <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-[#8B847D40] px-3 py-2 sm:px-4">
+            <RailArrow
+              disabled={!canGoPrevious}
+              label="Previous matchday"
+              onClick={() => selectByOffset(-1)}
+            >
+              ←
+            </RailArrow>
+
+            <div className="overflow-x-auto">
+              <div className="flex min-w-max gap-2">
+                {data.matchdays.map((matchday) => (
+                  <DateChip
+                    key={matchday.dateKey}
+                    active={matchday.dateKey === selectedMatchday?.dateKey}
+                    matchday={matchday}
+                    onSelect={() => selectDate(matchday.dateKey)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <RailArrow
+              disabled={!canGoNext}
+              label="Next matchday"
+              onClick={() => selectByOffset(1)}
+            >
+              →
+            </RailArrow>
+          </div>
+
+          <div className="divide-y divide-[#8B847D2E]">
+            {selectedMatchday?.matches.map((match) => (
+              <MatchRow
+                key={match.id}
+                expanded={expandedMatchId === match.id}
+                match={match}
+                onToggle={() => setExpandedMatchId((current) => (current === match.id ? null : match.id))}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function MatchdayTitle({
+  matchday,
+  todayDateKey,
+}: {
+  matchday: MatchdayView;
+  todayDateKey: string;
+}) {
+  const title =
+    matchday.dateKey === todayDateKey
+      ? "Today's matches"
+      : matchday.dateKey < todayDateKey
+        ? `Matches on ${formatDateKey(matchday.dateKey, { weekday: 'long', month: 'long', day: 'numeric' })}`
+        : 'Upcoming matches';
+  const subtitle =
+    matchday.dateKey === todayDateKey || matchday.dateKey > todayDateKey
+      ? formatDateKey(matchday.dateKey, { weekday: 'long', month: 'long', day: 'numeric' })
+      : `${matchday.matches.length} ${matchday.matches.length === 1 ? 'match' : 'matches'}`;
+
+  return (
+    <div className="mt-2">
+      <h2 className="text-lg font-semibold leading-tight tracking-[-0.02em] text-[#252F3D]">{title}</h2>
+      <p className="mt-1 text-sm leading-[1.45] text-[#5C5752]">{subtitle}</p>
+    </div>
+  );
+}
+
+function DateChip({
+  active,
+  matchday,
+  onSelect,
+}: {
+  active: boolean;
+  matchday: MatchdayView;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onSelect}
+      className={[
+        'inline-flex h-9 items-center justify-center whitespace-nowrap border px-3 font-mono text-[0.68rem] uppercase leading-none tracking-[0.08em] transition',
+        active
+          ? 'border-[#4B607C80] bg-[#EEF1F3] text-[#252F3D]'
+          : 'border-[#8B847D40] bg-transparent text-[#5C5752] hover:border-[#5C575280] hover:bg-[#EBE7E4]',
+      ].join(' ')}
+    >
+      {formatDateKey(matchday.dateKey, { month: 'short', day: 'numeric' })}
+    </button>
+  );
+}
+
+function MatchRow({
+  expanded,
+  match,
+  onToggle,
+}: {
+  expanded: boolean;
+  match: MatchdayMatch;
+  onToggle: () => void;
+}) {
+  return (
+    <article className="bg-[#F3F2F0] transition-colors hover:bg-[#EBE7E4]/65">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_4.75rem_auto] sm:items-center sm:px-5">
+        <p className="col-span-2 min-w-0 text-sm font-medium leading-[1.35] text-[#252F3D] sm:col-span-1">
+          {getMatchSummary(match)}
+        </p>
+        <span className="font-mono text-[0.68rem] uppercase leading-none tracking-[0.08em] text-[#5C5752] sm:text-center">
+          {getStatusLabel(match)}
+        </span>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={onToggle}
+          className="inline-flex h-8 items-center justify-center border border-[#8B847D59] bg-transparent px-3 font-mono text-[0.64rem] uppercase leading-none tracking-[0.1em] text-[#252F3D] transition hover:border-[#5C575280] hover:bg-[#EBE7E4]"
+        >
+          {expanded ? 'Hide' : 'Guesses'}
+        </button>
+      </div>
+
+      {expanded ? <GuessList guesses={match.guesses} match={match} /> : null}
+    </article>
+  );
+}
+
+function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: MatchdayMatch }) {
+  const showTeams = shouldShowGuessTeams(match, guesses);
+
+  if (guesses.length === 0) {
+    return (
+      <p className="border-t border-[#8B847D2E] px-4 py-3 text-sm leading-[1.45] text-[#5C5752] sm:px-5">
+        No guesses matched this fixture yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="border-t border-[#8B847D2E] px-4 py-2 sm:px-5">
+      <div className="grid gap-1">
+        {guesses.map((guess) => (
+          <div
+            key={`${match.id}-${guess.player}`}
+            className="grid grid-cols-[minmax(7rem,1fr)_minmax(4rem,auto)] items-baseline gap-3 text-sm"
+          >
+            <span className="min-w-0 truncate font-medium text-[#252F3D]">{guess.player}</span>
+            <span className="min-w-0 truncate text-right font-mono text-[0.78rem] tabular-nums text-[#384251]">
+              {formatGuess(guess, showTeams)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RailArrow({
+  children,
+  disabled,
+  label,
+  onClick,
+}: {
+  children: ReactNode;
+  disabled: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-9 w-9 items-center justify-center border border-[#8B847D59] bg-transparent text-sm leading-none text-[#252F3D] transition hover:border-[#5C575280] hover:bg-[#EBE7E4] disabled:cursor-not-allowed disabled:border-[#8B847D2E] disabled:text-[#8B847D80] disabled:hover:bg-transparent"
+    >
+      {children}
+    </button>
+  );
+}
+
+function getSafeInitialDateKey(data: HomepageMatchdayData): string {
+  return data.initialDateKey ?? data.matchdays[0]?.dateKey ?? '';
+}
+
+function getMatchSummary(match: MatchdayMatch): string {
+  if (hasVisibleScore(match)) {
+    return `${match.homeTeam} ${match.homeGoals}-${match.awayGoals} ${match.awayTeam}`;
+  }
+
+  return `${match.homeTeam} vs ${match.awayTeam}`;
+}
+
+function getStatusLabel(match: MatchdayMatch): string {
+  if (match.status === 'FINISHED') {
+    return 'FT';
+  }
+
+  if (match.status === 'IN_PLAY' || match.status === 'PAUSED') {
+    return 'Live';
+  }
+
+  return match.displayTime ?? 'TBD';
+}
+
+function hasVisibleScore(match: MatchdayMatch): boolean {
+  return (
+    match.homeGoals !== null &&
+    match.awayGoals !== null &&
+    (match.status === 'FINISHED' || match.status === 'IN_PLAY' || match.status === 'PAUSED')
+  );
+}
+
+function shouldShowGuessTeams(match: MatchdayMatch, guesses: MatchdayGuess[]): boolean {
+  return (
+    isPlaceholderTeam(match.homeTeam) ||
+    isPlaceholderTeam(match.awayTeam) ||
+    guesses.some((guess) => guess.homeTeam !== match.homeTeam || guess.awayTeam !== match.awayTeam)
+  );
+}
+
+function isPlaceholderTeam(team: string): boolean {
+  return /^(tbd|winner\b|runner-up\b|runner up\b|to be determined)$/i.test(team.trim());
+}
+
+function formatGuess(guess: MatchdayGuess, showTeams: boolean): string {
+  const score = `${guess.homeGoals || '-'}-${guess.awayGoals || '-'}`;
+
+  if (!showTeams) {
+    return score;
+  }
+
+  return `${guess.homeTeam} ${score} ${guess.awayTeam}`;
+}
+
+function formatDateKey(
+  dateKey: string,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    ...options,
+  }).format(new Date(`${dateKey}T12:00:00Z`));
+}
