@@ -93,6 +93,7 @@ async function getPredictionIndexes(): Promise<PredictionIndexes> {
         awayGoals: match.awayGoals,
         homeTeam: match.homeTeam,
         awayTeam: match.awayTeam,
+        teamsMatch: false,
       };
 
       addExactGuess(exactGuesses, getExactMatchKey(dateKey, match.homeTeam, match.awayTeam), guess);
@@ -143,21 +144,23 @@ function getGuessesForMatch(
 ): MatchdayGuess[] {
   const exactKey = getExactMatchKey(match.dateKey, match.homeTeam, match.awayTeam);
   const exactGuesses = indexes.exactGuesses.get(exactKey);
+  const guessesByPlayer = new Map<string, MatchdayGuess>();
 
   if (exactGuesses && exactGuesses.length > 0) {
-    return sortGuesses(exactGuesses.map((guess) => ({
-      ...guess,
-      homeTeam: match.homeTeam,
-      awayTeam: match.awayTeam,
-    })));
-  }
-
-  if (!hasPlaceholderTeam(match)) {
-    return [];
+    for (const guess of exactGuesses) {
+      guessesByPlayer.set(guess.player, {
+        ...guess,
+        teamsMatch: true,
+      });
+    }
   }
 
   const dateTimeKey = getDateTimeKey(match.dateKey, match.displayTime);
-  const fallbackGuesses = indexes.playerSets.flatMap(({ player, predictions }) => {
+  const slotGuesses = indexes.playerSets.flatMap(({ player, predictions }) => {
+    if (guessesByPlayer.has(player)) {
+      return [];
+    }
+
     const prediction = predictions.matchesByDateTime.get(dateTimeKey)?.[occurrenceIndex];
 
     if (!prediction) {
@@ -170,10 +173,11 @@ function getGuessesForMatch(
       awayGoals: prediction.awayGoals,
       homeTeam: prediction.homeTeam,
       awayTeam: prediction.awayTeam,
+      teamsMatch: doPredictedTeamsMatchKnownFixtureTeams(match, prediction),
     }];
   });
 
-  return sortGuesses(fallbackGuesses);
+  return sortGuesses([...guessesByPlayer.values(), ...slotGuesses]);
 }
 
 function addExactGuess(
@@ -259,8 +263,19 @@ function normalizeTeamName(team: string): string {
   return TEAM_ALIASES[normalized] ?? normalized;
 }
 
-function hasPlaceholderTeam(match: WorldCupMatch): boolean {
-  return normalizeTeamName(match.homeTeam) === 'tbd' || normalizeTeamName(match.awayTeam) === 'tbd';
+function doPredictedTeamsMatchKnownFixtureTeams(
+  match: WorldCupMatch,
+  prediction: PlayerBetMatch,
+): boolean {
+  const predictedTeams = new Set([
+    normalizeTeamName(prediction.homeTeam),
+    normalizeTeamName(prediction.awayTeam),
+  ]);
+  const knownFixtureTeams = [match.homeTeam, match.awayTeam]
+    .map(normalizeTeamName)
+    .filter((team) => team !== 'tbd');
+
+  return knownFixtureTeams.every((team) => predictedTeams.has(team));
 }
 
 function sortGuesses(guesses: MatchdayGuess[]): MatchdayGuess[] {

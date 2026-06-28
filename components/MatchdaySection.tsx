@@ -172,9 +172,14 @@ function MatchRow({
   return (
     <article className="bg-[#F3F2F0] transition-colors hover:bg-[#EBE7E4]/65">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_4.75rem_auto] sm:items-center sm:px-5">
-        <p className="col-span-2 min-w-0 text-sm font-medium leading-[1.35] text-[#252F3D] sm:col-span-1">
-          {getMatchSummary(match)}
-        </p>
+        <div className="col-span-2 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 sm:col-span-1">
+          <p className="min-w-0 text-sm font-medium leading-[1.35] text-[#252F3D]">
+            {getMatchSummary(match)}
+          </p>
+          <span className="font-mono text-[0.62rem] uppercase leading-none tracking-[0.08em] text-[#5C5752]">
+            {getStageLabel(match)}
+          </span>
+        </div>
         <span className="font-mono text-[0.68rem] uppercase leading-none tracking-[0.08em] text-[#5C5752] sm:text-center">
           {getStatusLabel(match)}
         </span>
@@ -205,17 +210,22 @@ function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: Matchd
   return (
     <div className="border-t border-[#8B847D2E] px-4 py-2 sm:px-5">
       <div className="grid gap-1">
-        {guesses.map((guess) => (
-          <div
-            key={`${match.id}-${guess.player}`}
-            className="grid grid-cols-[minmax(7rem,1fr)_minmax(4rem,auto)] items-baseline gap-3 text-sm"
-          >
-            <span className="min-w-0 truncate font-medium text-[#252F3D]">{guess.player}</span>
-            <span className="min-w-0 truncate text-right font-mono text-[0.78rem] tabular-nums text-[#384251]">
-              {formatGuess(guess)}
-            </span>
-          </div>
-        ))}
+        {guesses.map((guess) => {
+          const guessClassName = guess.teamsMatch ? 'text-[#252F3D]' : 'text-[#9B4A43]';
+          const detailClassName = guess.teamsMatch ? 'text-[#384251]' : 'text-[#9B4A43]';
+
+          return (
+            <div
+              key={`${match.id}-${guess.player}`}
+              className="grid grid-cols-[minmax(5rem,0.45fr)_minmax(0,1fr)] items-baseline gap-3 text-sm"
+            >
+              <span className={`min-w-0 truncate font-medium ${guessClassName}`}>{guess.player}</span>
+              <span className={`min-w-0 truncate text-right font-mono text-[0.78rem] tabular-nums ${detailClassName}`}>
+                {formatGuess(guess)}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -269,6 +279,29 @@ function getStatusLabel(match: MatchdayMatch): string {
   return match.displayTime ?? 'TBD';
 }
 
+function getStageLabel(match: MatchdayMatch): string {
+  if (match.stage === 'GROUP_STAGE') {
+    return formatGroupLabel(match.group);
+  }
+
+  return STAGE_LABELS[match.stage] ?? formatStageName(match.stage);
+}
+
+function formatGroupLabel(group: string | null): string {
+  const groupId = group?.replace(/^GROUP_/, '');
+
+  return groupId ? `Group ${groupId}` : 'Group stage';
+}
+
+function formatStageName(stage: string): string {
+  return stage
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function hasVisibleScore(match: MatchdayMatch): boolean {
   return (
     match.homeGoals !== null &&
@@ -278,7 +311,7 @@ function hasVisibleScore(match: MatchdayMatch): boolean {
 }
 
 function formatGuess(guess: MatchdayGuess): string {
-  return `${guess.homeGoals || '-'}-${guess.awayGoals || '-'}`;
+  return `${guess.homeTeam} ${guess.homeGoals || '-'}-${guess.awayGoals || '-'} ${guess.awayTeam}`;
 }
 
 function formatDateKey(
@@ -290,3 +323,12 @@ function formatDateKey(
     ...options,
   }).format(new Date(`${dateKey}T12:00:00Z`));
 }
+
+const STAGE_LABELS: Record<string, string> = {
+  FINAL: 'Final',
+  LAST_16: 'Round of 16',
+  LAST_32: 'Round of 32',
+  QUARTER_FINALS: 'Round of 8',
+  SEMI_FINALS: 'Semi-final',
+  THIRD_PLACE: 'Third place',
+};

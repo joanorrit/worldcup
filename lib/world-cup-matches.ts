@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
+const LOCAL_DEVELOPMENT_MATCH_CACHE_PATH = path.join(process.cwd(), 'latest.json');
 const LOCAL_MATCH_CACHE_PATH = path.join(process.cwd(), 'data', 'worldcup-matches.local.json');
 
 export const WORLD_CUP_CACHE_BLOB_PATH =
@@ -68,6 +69,12 @@ export async function getWorldCupMatchCache(): Promise<WorldCupMatchCache | null
 
   if (cached) {
     return cached;
+  }
+
+  const developmentCache = await readLocalDevelopmentWorldCupMatchCache();
+
+  if (developmentCache) {
+    return developmentCache;
   }
 
   return readLocalWorldCupMatchCache();
@@ -146,6 +153,23 @@ async function readBlobWorldCupMatchCache(): Promise<WorldCupMatchCache | null> 
     return parseWorldCupMatchCache(await response.text());
   } catch (error) {
     console.error('Could not read World Cup match cache from Blob.', error);
+    return null;
+  }
+}
+
+async function readLocalDevelopmentWorldCupMatchCache(): Promise<WorldCupMatchCache | null> {
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
+
+  try {
+    return parseWorldCupMatchCache(await readFile(LOCAL_DEVELOPMENT_MATCH_CACHE_PATH, 'utf8'));
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return null;
+    }
+
+    console.error('Could not read local development World Cup match cache.', error);
     return null;
   }
 }

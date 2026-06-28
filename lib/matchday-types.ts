@@ -4,6 +4,7 @@ export interface MatchdayGuess {
   awayGoals: string;
   homeTeam: string;
   awayTeam: string;
+  teamsMatch: boolean;
 }
 
 export interface MatchdayMatch {
