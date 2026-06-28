@@ -265,18 +265,15 @@ function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: Matchd
     <div className="border-t border-[#8B847D2E] px-4 py-2.5 sm:px-5">
       <div className="divide-y divide-[#8B847D24] border border-[#8B847D24] bg-[#F4F2F0]">
         {guesses.map((guess) => {
-          const guessClassName = guess.teamsMatch ? 'text-[#252F3D]' : 'text-[#9B4A43]';
-          const detailClassName = guess.teamsMatch
-            ? 'border-[#8B847D33] bg-[#EBE7E4]/45 text-[#384251]'
-            : 'border-[#9B4A4340] bg-[#9B4A430D] text-[#9B4A43]';
+          const tone = getGuessTone(guess);
 
           return (
             <div
               key={`${match.id}-${guess.player}`}
-              className="grid grid-cols-[minmax(5rem,0.26fr)_minmax(0,1fr)] items-center gap-3 px-3 py-2 text-sm odd:bg-[#EBE7E4]/22"
+              className={`grid grid-cols-[minmax(5rem,0.26fr)_minmax(0,1fr)] items-center gap-3 px-3 py-2 text-sm ${tone.rowClassName}`}
             >
-              <span className={`min-w-0 truncate font-medium ${guessClassName}`}>{guess.player}</span>
-              <span className={`max-w-full min-w-0 justify-self-end truncate border px-2 py-1 text-right font-mono text-[0.78rem] leading-none tabular-nums ${detailClassName}`}>
+              <span className={`min-w-0 truncate font-medium ${tone.playerClassName}`}>{guess.player}</span>
+              <span className={`max-w-full min-w-0 justify-self-end truncate border px-2 py-1 text-right font-mono text-[0.78rem] leading-none tabular-nums ${tone.detailClassName}`}>
                 {formatGuess(guess)}
               </span>
             </div>
@@ -364,6 +361,30 @@ function hasVisibleScore(match: MatchdayMatch): boolean {
     match.awayGoals !== null &&
     (match.status === 'FINISHED' || match.status === 'IN_PLAY' || match.status === 'PAUSED')
   );
+}
+
+function getGuessTone(guess: MatchdayGuess) {
+  if (guess.resultMatch === true) {
+    return {
+      rowClassName: 'bg-[#4F765914] odd:bg-[#4F76591F]',
+      playerClassName: 'text-[#315F3A]',
+      detailClassName: 'border-[#4F76594D] bg-[#4F765914] text-[#315F3A]',
+    };
+  }
+
+  if (guess.resultMatch === false || !guess.teamsMatch) {
+    return {
+      rowClassName: 'bg-[#9B4A430D] odd:bg-[#9B4A4314]',
+      playerClassName: 'text-[#9B4A43]',
+      detailClassName: 'border-[#9B4A4340] bg-[#9B4A430D] text-[#9B4A43]',
+    };
+  }
+
+  return {
+    rowClassName: 'odd:bg-[#EBE7E4]/22',
+    playerClassName: 'text-[#252F3D]',
+    detailClassName: 'border-[#8B847D33] bg-[#EBE7E4]/45 text-[#384251]',
+  };
 }
 
 function formatGuess(guess: MatchdayGuess): string {

@@ -94,6 +94,7 @@ async function getPredictionIndexes(): Promise<PredictionIndexes> {
         homeTeam: match.homeTeam,
         awayTeam: match.awayTeam,
         teamsMatch: false,
+        resultMatch: null,
       };
 
       addExactGuess(exactGuesses, getExactMatchKey(dateKey, match.homeTeam, match.awayTeam), guess);
@@ -150,6 +151,7 @@ function getGuessesForMatch(
     for (const guess of exactGuesses) {
       guessesByPlayer.set(guess.player, {
         ...guess,
+        resultMatch: getResultMatch(match, guess, true),
         teamsMatch: true,
       });
     }
@@ -167,14 +169,18 @@ function getGuessesForMatch(
       return [];
     }
 
-    return [{
+    const teamsMatch = doPredictedTeamsMatchKnownFixtureTeams(match, prediction);
+    const guess = {
       player,
       homeGoals: prediction.homeGoals,
       awayGoals: prediction.awayGoals,
       homeTeam: prediction.homeTeam,
       awayTeam: prediction.awayTeam,
-      teamsMatch: doPredictedTeamsMatchKnownFixtureTeams(match, prediction),
-    }];
+      teamsMatch,
+      resultMatch: getResultMatch(match, prediction, teamsMatch),
+    };
+
+    return [guess];
   });
 
   return sortGuesses([...guessesByPlayer.values(), ...slotGuesses]);
@@ -276,6 +282,29 @@ function doPredictedTeamsMatchKnownFixtureTeams(
     .filter((team) => team !== 'tbd');
 
   return knownFixtureTeams.every((team) => predictedTeams.has(team));
+}
+
+function getResultMatch(
+  match: WorldCupMatch,
+  prediction: Pick<PlayerBetMatch, 'homeGoals' | 'awayGoals'>,
+  teamsMatch: boolean,
+): boolean | null {
+  if (match.homeGoals === null || match.awayGoals === null) {
+    return null;
+  }
+
+  if (match.stage !== 'GROUP_STAGE' && !teamsMatch) {
+    return false;
+  }
+
+  const homeGoals = Number.parseInt(prediction.homeGoals, 10);
+  const awayGoals = Number.parseInt(prediction.awayGoals, 10);
+
+  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) {
+    return false;
+  }
+
+  return homeGoals === match.homeGoals && awayGoals === match.awayGoals;
 }
 
 function sortGuesses(guesses: MatchdayGuess[]): MatchdayGuess[] {
