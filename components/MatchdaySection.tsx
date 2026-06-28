@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type {
   HomepageMatchdayData,
   MatchdayGuess,
@@ -16,14 +16,24 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
   const initialDateKey = getSafeInitialDateKey(data);
   const [selectedDateKey, setSelectedDateKey] = useState(initialDateKey);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const activeDateChipRef = useRef<HTMLButtonElement | null>(null);
 
   const selectedIndex = Math.max(
     data.matchdays.findIndex((matchday) => matchday.dateKey === selectedDateKey),
     0,
   );
   const selectedMatchday = data.matchdays[selectedIndex] ?? null;
+  const todayMatchday = data.matchdays.find((matchday) => matchday.dateKey === data.todayDateKey) ?? null;
   const canGoPrevious = selectedIndex > 0;
   const canGoNext = selectedIndex >= 0 && selectedIndex < data.matchdays.length - 1;
+  const canGoToday = Boolean(todayMatchday && selectedMatchday?.dateKey !== todayMatchday.dateKey);
+
+  useEffect(() => {
+    activeDateChipRef.current?.scrollIntoView({
+      block: 'nearest',
+      inline: 'center',
+    });
+  }, [selectedDateKey]);
 
   function selectDate(dateKey: string) {
     setSelectedDateKey(dateKey);
@@ -41,22 +51,35 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
   return (
     <section className="matchday-shell mx-auto mb-6 w-full max-w-[72rem] border border-[#8B847D59] bg-[#F4F2F0] text-left shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
       <div className="border-b border-[#8B847D40] px-4 py-3 sm:px-5">
-        <p className="font-mono text-[0.68rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">
-          Matchday
-        </p>
-
-        {selectedMatchday ? (
-          <MatchdayTitle matchday={selectedMatchday} todayDateKey={data.todayDateKey} />
-        ) : (
-          <div className="mt-2">
-            <h2 className="text-lg font-semibold leading-tight tracking-[-0.02em] text-[#252F3D]">
-              Match schedule unavailable
-            </h2>
-            <p className="mt-1 text-sm leading-[1.45] text-[#5C5752]">
-              Sync World Cup fixtures to show matchdays and guesses.
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[0.68rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">
+              Matchday
             </p>
+
+            {selectedMatchday ? (
+              <MatchdayTitle matchday={selectedMatchday} todayDateKey={data.todayDateKey} />
+            ) : (
+              <div className="mt-2">
+                <h2 className="text-lg font-semibold leading-tight tracking-[-0.02em] text-[#252F3D]">
+                  Match schedule unavailable
+                </h2>
+                <p className="mt-1 text-sm leading-[1.45] text-[#5C5752]">
+                  Sync World Cup fixtures to show matchdays and guesses.
+                </p>
+              </div>
+            )}
           </div>
-        )}
+
+          <TodayButton
+            disabled={!canGoToday}
+            onClick={() => {
+              if (todayMatchday) {
+                selectDate(todayMatchday.dateKey);
+              }
+            }}
+          />
+        </div>
       </div>
 
       {data.matchdays.length > 0 ? (
@@ -76,6 +99,7 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
                   <DateChip
                     key={matchday.dateKey}
                     active={matchday.dateKey === selectedMatchday?.dateKey}
+                    buttonRef={matchday.dateKey === selectedMatchday?.dateKey ? activeDateChipRef : undefined}
                     matchday={matchday}
                     onSelect={() => selectDate(matchday.dateKey)}
                   />
@@ -136,15 +160,18 @@ function MatchdayTitle({
 
 function DateChip({
   active,
+  buttonRef,
   matchday,
   onSelect,
 }: {
   active: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
   matchday: MatchdayView;
   onSelect: () => void;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       aria-pressed={active}
       onClick={onSelect}
@@ -156,6 +183,25 @@ function DateChip({
       ].join(' ')}
     >
       {formatDateKey(matchday.dateKey, { month: 'short', day: 'numeric' })}
+    </button>
+  );
+}
+
+function TodayButton({
+  disabled,
+  onClick,
+}: {
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-9 items-center justify-center border border-[#8B847D59] bg-transparent px-3 font-mono text-[0.64rem] uppercase leading-none tracking-[0.1em] text-[#252F3D] transition hover:border-[#5C575280] hover:bg-[#EBE7E4] disabled:cursor-not-allowed disabled:border-[#8B847D2E] disabled:text-[#8B847D80] disabled:hover:bg-transparent"
+    >
+      Today
     </button>
   );
 }
@@ -208,19 +254,21 @@ function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: Matchd
   }
 
   return (
-    <div className="border-t border-[#8B847D2E] px-4 py-2 sm:px-5">
-      <div className="grid gap-1">
+    <div className="border-t border-[#8B847D2E] px-4 py-2.5 sm:px-5">
+      <div className="divide-y divide-[#8B847D24] border border-[#8B847D24] bg-[#F4F2F0]">
         {guesses.map((guess) => {
           const guessClassName = guess.teamsMatch ? 'text-[#252F3D]' : 'text-[#9B4A43]';
-          const detailClassName = guess.teamsMatch ? 'text-[#384251]' : 'text-[#9B4A43]';
+          const detailClassName = guess.teamsMatch
+            ? 'border-[#8B847D33] bg-[#EBE7E4]/45 text-[#384251]'
+            : 'border-[#9B4A4340] bg-[#9B4A430D] text-[#9B4A43]';
 
           return (
             <div
               key={`${match.id}-${guess.player}`}
-              className="grid grid-cols-[minmax(5rem,0.45fr)_minmax(0,1fr)] items-baseline gap-3 text-sm"
+              className="grid grid-cols-[minmax(5rem,0.26fr)_minmax(0,1fr)] items-center gap-3 px-3 py-2 text-sm odd:bg-[#EBE7E4]/22"
             >
               <span className={`min-w-0 truncate font-medium ${guessClassName}`}>{guess.player}</span>
-              <span className={`min-w-0 truncate text-right font-mono text-[0.78rem] tabular-nums ${detailClassName}`}>
+              <span className={`max-w-full min-w-0 justify-self-end truncate border px-2 py-1 text-right font-mono text-[0.78rem] leading-none tabular-nums ${detailClassName}`}>
                 {formatGuess(guess)}
               </span>
             </div>
