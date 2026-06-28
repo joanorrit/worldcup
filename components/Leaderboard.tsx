@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { Standing } from '@/lib/leaderboard';
 
 export interface LeaderboardSnapshotView {
@@ -176,10 +177,23 @@ function PodiumMetric({ label, value, penalty = 0 }: { label: string; value: str
 }
 
 function PlayerRowList({ standings }: { standings: Standing[] }) {
+  const hasExpandedMetrics = standings.some(hasExpandedScoreMetrics);
+  const tableGridClass = hasExpandedMetrics
+    ? 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem]'
+    : 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem]';
+
   return (
     <div className="leaderboard-list-scroll w-full overflow-x-auto">
-      <div className="leaderboard-list-inner min-w-[48rem]">
-        <div className="leaderboard-table-head grid grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem] border-b border-[#8B847D40] bg-[#EBE7E4]/55 px-4 py-2 text-left font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">
+      <div className={hasExpandedMetrics ? 'leaderboard-list-inner min-w-[72rem]' : 'leaderboard-list-inner min-w-[48rem]'}>
+        {hasExpandedMetrics ? (
+          <div className="border-b border-[#8B847D40] bg-[#EBE7E4]/35 px-4 py-2 text-left">
+            <span className="inline-flex border border-[#8B847D40] px-2 py-1 font-mono text-[0.58rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">
+              Expanded scoring
+            </span>
+          </div>
+        ) : null}
+
+        <div className={`leaderboard-table-head grid ${tableGridClass} border-b border-[#8B847D40] bg-[#EBE7E4]/55 px-4 py-2 text-left font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]`}>
           <span className="text-center">Rank</span>
           <span>Player</span>
           <span className="text-center">Move</span>
@@ -188,11 +202,18 @@ function PlayerRowList({ standings }: { standings: Standing[] }) {
           <span className="text-center">Signes</span>
           <span className="text-center">Resultats</span>
           <span className="text-center">Diff. gols</span>
+          {hasExpandedMetrics ? (
+            <>
+              <span className="text-center">Posicions</span>
+              <span className="text-center">Setzens</span>
+              <span className="text-center">Encreuam.</span>
+            </>
+          ) : null}
         </div>
 
         <div className="divide-y divide-[#8B847D2E]">
           {standings.map((standing) => (
-            <PlayerRow key={standing.player} standing={standing} />
+            <PlayerRow key={standing.player} hasExpandedMetrics={hasExpandedMetrics} standing={standing} tableGridClass={tableGridClass} />
           ))}
         </div>
       </div>
@@ -200,11 +221,20 @@ function PlayerRowList({ standings }: { standings: Standing[] }) {
   );
 }
 
-function PlayerRow({ standing }: { standing: Standing }) {
+function PlayerRow({
+  hasExpandedMetrics,
+  standing,
+  tableGridClass,
+}: {
+  hasExpandedMetrics: boolean;
+  standing: Standing;
+  tableGridClass: string;
+}) {
   const isLeader = standing.rank === 1;
+  const statCount = hasExpandedMetrics ? 6 : 3;
 
   return (
-    <article className="leaderboard-player-row grid grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem] items-center bg-[#F3F2F0] px-4 py-2 text-left transition-colors hover:bg-[#EBE7E4]/65">
+    <article className={`leaderboard-player-row grid ${tableGridClass} items-center bg-[#F3F2F0] px-4 py-2 text-left transition-colors hover:bg-[#EBE7E4]/65`}>
       <div className={isLeader ? 'leaderboard-player-rank text-center text-lg font-semibold leading-none text-[#7A5A22]' : 'leaderboard-player-rank text-center text-lg font-semibold leading-none text-[#5C5752]'}>
         #{standing.rank}
       </div>
@@ -228,20 +258,27 @@ function PlayerRow({ standing }: { standing: Standing }) {
         <PointDelta value={standing.pointMovement} />
       </div>
 
-      <div className="leaderboard-player-stats">
+      <div className="leaderboard-player-stats" style={{ '--leaderboard-stat-count': statCount } as CSSProperties}>
         <PlayerRowStat label="Signes" value={standing.signs} />
         <PlayerRowStat label="Resultats" value={standing.exactResults} />
         <PlayerRowStat label="Diff. gols" value={standing.goalDifference} />
+        {hasExpandedMetrics ? (
+          <>
+            <PlayerRowStat label="Posicions" value={standing.positions} />
+            <PlayerRowStat label="Setzens" value={standing.roundOf32} />
+            <PlayerRowStat label="Encreuam." value={standing.brackets} />
+          </>
+        ) : null}
       </div>
     </article>
   );
 }
 
-function PlayerRowStat({ label, value }: { label: string; value: number }) {
+function PlayerRowStat({ label, value }: { label: string; value: number | undefined }) {
   return (
     <div className="leaderboard-row-stat text-center text-sm font-medium tabular-nums text-[#384251]/90">
       <span className="leaderboard-row-stat-label hidden font-mono uppercase leading-none tracking-[0.08em] text-[#5C5752]">{label}</span>
-      <span>{value}</span>
+      <span>{value ?? '-'}</span>
     </div>
   );
 }
@@ -325,4 +362,8 @@ function getPlayerPath(player: string) {
 
 function formatNumber(value: number) {
   return numberFormatter.format(value);
+}
+
+function hasExpandedScoreMetrics(standing: Standing) {
+  return standing.positions !== undefined || standing.roundOf32 !== undefined || standing.brackets !== undefined;
 }

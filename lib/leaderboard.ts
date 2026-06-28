@@ -27,6 +27,9 @@ export interface RawCsvRow {
   Signes?: string;
   Resultats?: string;
   'Diferència gols'?: string;
+  Posicions?: string;
+  'Setzens de final'?: string;
+  Encreuaments?: string;
   Punts?: string;
 }
 
@@ -35,6 +38,9 @@ export interface Standing {
   signs: number;
   exactResults: number;
   goalDifference: number;
+  positions?: number;
+  roundOf32?: number;
+  brackets?: number;
   points: number;
   penalty: number;
   rank: number;
@@ -202,6 +208,9 @@ function normalizeRow(row: RawCsvRow): Omit<Standing, 'rank' | 'rankMovement' | 
     signs: parseScore(row.Signes),
     exactResults: parseScore(row.Resultats),
     goalDifference: parseScore(row['Diferència gols']),
+    positions: parseOptionalScore(row.Posicions),
+    roundOf32: parseOptionalScore(row['Setzens de final']),
+    brackets: parseOptionalScore(row.Encreuaments),
     points: parseScore(row.Punts) - penalty,
     penalty,
   };
@@ -270,6 +279,15 @@ function addMovement(
 function parseScore(value: string | undefined): number {
   const parsed = Number.parseInt(value ?? '0', 10);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseOptionalScore(value: string | undefined): number | undefined {
+  if (value === undefined || value.trim() === '') {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function getPlayerPenalty(player: string): number {

@@ -159,7 +159,7 @@ textarea {
     display: grid;
     gap: 0.5rem;
     grid-area: stats;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.75rem), 1fr));
     margin-top: 0.125rem;
   }
 
@@ -167,12 +167,14 @@ textarea {
     border: 1px solid #8B847D2E;
     display: grid;
     gap: 0.25rem;
+    min-width: 0;
     padding: 0.45rem 0.35rem;
   }
 
   .leaderboard-row-stat-label {
     display: block;
     font-size: 0.52rem;
+    overflow-wrap: anywhere;
   }
 
   .player-page-header > div {
