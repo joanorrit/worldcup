@@ -17,6 +17,7 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
   const [selectedDateKey, setSelectedDateKey] = useState(initialDateKey);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const activeDateChipRef = useRef<HTMLButtonElement | null>(null);
+  const dateRailScrollRef = useRef<HTMLDivElement | null>(null);
 
   const selectedIndex = Math.max(
     data.matchdays.findIndex((matchday) => matchday.dateKey === selectedDateKey),
@@ -29,10 +30,14 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
   const canGoToday = Boolean(todayMatchday && selectedMatchday?.dateKey !== todayMatchday.dateKey);
 
   useEffect(() => {
-    activeDateChipRef.current?.scrollIntoView({
-      block: 'nearest',
-      inline: 'center',
-    });
+    const activeDateChip = activeDateChipRef.current;
+    const dateRailScroll = dateRailScrollRef.current;
+
+    if (activeDateChip && dateRailScroll) {
+      dateRailScroll.scrollTo({
+        left: activeDateChip.offsetLeft - (dateRailScroll.clientWidth - activeDateChip.offsetWidth) / 2,
+      });
+    }
   }, [selectedDateKey]);
 
   function selectDate(dateKey: string) {
@@ -84,7 +89,7 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
 
       {data.matchdays.length > 0 ? (
         <>
-          <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-[#8B847D40] px-3 py-2 sm:px-4">
+          <div className="sticky top-0 z-20 grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-[#8B847D40] bg-[#F4F2F0] px-3 py-2 shadow-[0_1px_1px_rgba(37,47,61,0.03)] sm:px-4">
             <RailArrow
               disabled={!canGoPrevious}
               label="Previous matchday"
@@ -93,7 +98,7 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
               ←
             </RailArrow>
 
-            <div className="overflow-x-auto">
+            <div ref={dateRailScrollRef} className="overflow-x-auto">
               <div className="flex min-w-max gap-2">
                 {data.matchdays.map((matchday) => (
                   <DateChip
@@ -102,6 +107,7 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
                     buttonRef={matchday.dateKey === selectedMatchday?.dateKey ? activeDateChipRef : undefined}
                     matchday={matchday}
                     onSelect={() => selectDate(matchday.dateKey)}
+                    todayDateKey={data.todayDateKey}
                   />
                 ))}
               </div>
@@ -163,11 +169,13 @@ function DateChip({
   buttonRef,
   matchday,
   onSelect,
+  todayDateKey,
 }: {
   active: boolean;
   buttonRef?: Ref<HTMLButtonElement>;
   matchday: MatchdayView;
   onSelect: () => void;
+  todayDateKey: string;
 }) {
   return (
     <button
@@ -182,7 +190,7 @@ function DateChip({
           : 'border-[#8B847D40] bg-transparent text-[#5C5752] hover:border-[#5C575280] hover:bg-[#EBE7E4]',
       ].join(' ')}
     >
-      {formatDateKey(matchday.dateKey, { month: 'short', day: 'numeric' })}
+      {formatMatchdayChipLabel(matchday.dateKey, todayDateKey)}
     </button>
   );
 }
@@ -370,6 +378,36 @@ function formatDateKey(
     timeZone: 'UTC',
     ...options,
   }).format(new Date(`${dateKey}T12:00:00Z`));
+}
+
+function formatMatchdayChipLabel(dateKey: string, todayDateKey: string): string {
+  if (dateKey === todayDateKey) {
+    return 'Today';
+  }
+
+  if (dateKey === getPreviousDateKey(todayDateKey)) {
+    return 'Yesterday';
+  }
+
+  if (dateKey === getNextDateKey(todayDateKey)) {
+    return 'Tomorrow';
+  }
+
+  return formatDateKey(dateKey, { month: 'short', day: 'numeric' });
+}
+
+function getPreviousDateKey(dateKey: string): string {
+  const date = new Date(`${dateKey}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+
+  return date.toISOString().slice(0, 10);
+}
+
+function getNextDateKey(dateKey: string): string {
+  const date = new Date(`${dateKey}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+
+  return date.toISOString().slice(0, 10);
 }
 
 const STAGE_LABELS: Record<string, string> = {
