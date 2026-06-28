@@ -6,6 +6,7 @@ export interface MatchdayGuess {
   awayTeam: string;
   teamsMatch: boolean;
   resultMatch: boolean | null;
+  signMatch: boolean | null;
 }
 
 export interface MatchdayMatch {

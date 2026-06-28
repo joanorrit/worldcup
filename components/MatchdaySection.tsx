@@ -372,6 +372,14 @@ function getGuessTone(guess: MatchdayGuess) {
     };
   }
 
+  if (guess.signMatch === true) {
+    return {
+      rowClassName: 'bg-[#9A6A1B14] odd:bg-[#9A6A1B1F]',
+      playerClassName: 'text-[#76511D]',
+      detailClassName: 'border-[#9A6A1B4D] bg-[#9A6A1B14] text-[#76511D]',
+    };
+  }
+
   if (guess.resultMatch === false || !guess.teamsMatch) {
     return {
       rowClassName: 'bg-[#9B4A430D] odd:bg-[#9B4A4314]',
