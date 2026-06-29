@@ -17,6 +17,7 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
   const initialDateKey = getSafeInitialDateKey(data);
   const [selectedDateKey, setSelectedDateKey] = useState(initialDateKey);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [useAccessibleGuessColors, setUseAccessibleGuessColors] = useState(false);
   const activeDateChipRef = useRef<HTMLButtonElement | null>(null);
   const dateRailScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -77,14 +78,20 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
             )}
           </div>
 
-          <TodayButton
-            disabled={!canGoToday}
-            onClick={() => {
-              if (todayMatchday) {
-                selectDate(todayMatchday.dateKey);
-              }
-            }}
-          />
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <GuessColorButton
+              active={useAccessibleGuessColors}
+              onClick={() => setUseAccessibleGuessColors((current) => !current)}
+            />
+            <TodayButton
+              disabled={!canGoToday}
+              onClick={() => {
+                if (todayMatchday) {
+                  selectDate(todayMatchday.dateKey);
+                }
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -127,6 +134,7 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
             {selectedMatchday?.matches.map((match) => (
               <MatchRow
                 key={match.id}
+                accessibleGuessColors={useAccessibleGuessColors}
                 expanded={expandedMatchId === match.id}
                 match={match}
                 onToggle={() => setExpandedMatchId((current) => (current === match.id ? null : match.id))}
@@ -215,11 +223,38 @@ function TodayButton({
   );
 }
 
+function GuessColorButton({
+  active,
+  onClick,
+}: {
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label="Toggle accessible guess colors"
+      aria-pressed={active}
+      onClick={onClick}
+      className={[
+        'inline-flex h-9 items-center justify-center whitespace-nowrap border px-3 font-mono text-[0.64rem] uppercase leading-none tracking-[0.1em] transition',
+        active
+          ? 'border-[#4B607C80] bg-[#EEF1F3] text-[#252F3D]'
+          : 'border-[#8B847D59] bg-transparent text-[#252F3D] hover:border-[#5C575280] hover:bg-[#EBE7E4]',
+      ].join(' ')}
+    >
+      Alt colors
+    </button>
+  );
+}
+
 function MatchRow({
+  accessibleGuessColors,
   expanded,
   match,
   onToggle,
 }: {
+  accessibleGuessColors: boolean;
   expanded: boolean;
   match: MatchdayMatch;
   onToggle: () => void;
@@ -248,12 +283,20 @@ function MatchRow({
         </button>
       </div>
 
-      {expanded ? <GuessList guesses={match.guesses} match={match} /> : null}
+      {expanded ? <GuessList accessibleColors={accessibleGuessColors} guesses={match.guesses} match={match} /> : null}
     </article>
   );
 }
 
-function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: MatchdayMatch }) {
+function GuessList({
+  accessibleColors,
+  guesses,
+  match,
+}: {
+  accessibleColors: boolean;
+  guesses: MatchdayGuess[];
+  match: MatchdayMatch;
+}) {
   if (guesses.length === 0) {
     return (
       <p className="border-t border-[#8B847D2E] px-4 py-3 text-sm leading-[1.45] text-[#5C5752] sm:px-5">
@@ -266,7 +309,7 @@ function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: Matchd
     <div className="border-t border-[#8B847D2E] px-4 py-2.5 sm:px-5">
       <div className="divide-y divide-[#8B847D24] border border-[#8B847D24] bg-[#F4F2F0]">
         {guesses.map((guess) => {
-          const tone = getGuessTone(guess);
+          const tone = getGuessTone(guess, accessibleColors);
 
           return (
             <div
@@ -391,29 +434,47 @@ function hasVisibleScore(match: MatchdayMatch): boolean {
   );
 }
 
-function getGuessTone(guess: MatchdayGuess) {
+function getGuessTone(guess: MatchdayGuess, accessibleColors: boolean) {
   if (guess.resultMatch === true) {
-    return {
-      rowClassName: 'bg-[#4F765914] odd:bg-[#4F76591F]',
-      playerClassName: 'text-[#315F3A]',
-      detailClassName: 'border-[#4F76594D] bg-[#4F765914] text-[#315F3A]',
-    };
+    return accessibleColors
+      ? {
+          rowClassName: 'bg-[#1F6F9F12] odd:bg-[#1F6F9F1F]',
+          playerClassName: 'text-[#155A82]',
+          detailClassName: 'border-[#1F6F9F4D] bg-[#1F6F9F12] text-[#155A82]',
+        }
+      : {
+          rowClassName: 'bg-[#4F765914] odd:bg-[#4F76591F]',
+          playerClassName: 'text-[#315F3A]',
+          detailClassName: 'border-[#4F76594D] bg-[#4F765914] text-[#315F3A]',
+        };
   }
 
   if (guess.signMatch === true) {
-    return {
-      rowClassName: 'bg-[#9A6A1B14] odd:bg-[#9A6A1B1F]',
-      playerClassName: 'text-[#76511D]',
-      detailClassName: 'border-[#9A6A1B4D] bg-[#9A6A1B14] text-[#76511D]',
-    };
+    return accessibleColors
+      ? {
+          rowClassName: 'bg-[#D88C0014] odd:bg-[#D88C0024]',
+          playerClassName: 'text-[#775000]',
+          detailClassName: 'border-[#D88C0059] bg-[#D88C0014] text-[#775000]',
+        }
+      : {
+          rowClassName: 'bg-[#9A6A1B14] odd:bg-[#9A6A1B1F]',
+          playerClassName: 'text-[#76511D]',
+          detailClassName: 'border-[#9A6A1B4D] bg-[#9A6A1B14] text-[#76511D]',
+        };
   }
 
   if (guess.resultMatch === false || !guess.teamsMatch) {
-    return {
-      rowClassName: 'bg-[#9B4A430D] odd:bg-[#9B4A4314]',
-      playerClassName: 'text-[#9B4A43]',
-      detailClassName: 'border-[#9B4A4340] bg-[#9B4A430D] text-[#9B4A43]',
-    };
+    return accessibleColors
+      ? {
+          rowClassName: 'bg-[#8E5B8F12] odd:bg-[#8E5B8F1F]',
+          playerClassName: 'text-[#6F3D70]',
+          detailClassName: 'border-[#8E5B8F4D] bg-[#8E5B8F12] text-[#6F3D70]',
+        }
+      : {
+          rowClassName: 'bg-[#9B4A430D] odd:bg-[#9B4A4314]',
+          playerClassName: 'text-[#9B4A43]',
+          detailClassName: 'border-[#9B4A4340] bg-[#9B4A430D] text-[#9B4A43]',
+        };
   }
 
   return {
