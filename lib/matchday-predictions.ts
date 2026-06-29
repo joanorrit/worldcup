@@ -27,10 +27,16 @@ interface PredictionIndexes {
   }>;
 }
 
+interface KnockoutMatchIndex {
+  advancedTeamsByStage: Map<string, Map<string, MatchdayGuess['advancingTeamMatch']>>;
+  matchesByTeamPair: Map<string, WorldCupMatch>;
+}
+
 export const getHomepageMatchdays = cache(async (): Promise<HomepageMatchdayData> => {
   const cacheData = await getWorldCupMatchCache();
   const matches = cacheData?.matches ?? [];
   const predictionIndexes = await getPredictionIndexes();
+  const knockoutMatchIndex = getKnockoutMatchIndex(matches);
   const occurrenceCounts = new Map<string, number>();
 
   const matchdays = matches.reduce<MatchdayView[]>((days, match) => {
@@ -40,7 +46,7 @@ export const getHomepageMatchdays = cache(async (): Promise<HomepageMatchdayData
 
     const viewMatch = {
       ...match,
-      guesses: getGuessesForMatch(match, predictionIndexes, occurrenceIndex),
+      guesses: getGuessesForMatch(match, predictionIndexes, knockoutMatchIndex, occurrenceIndex),
     };
     const day = days.find((entry) => entry.dateKey === viewMatch.dateKey);
 
@@ -147,6 +153,7 @@ async function getPlayerSlugs(): Promise<string[]> {
 function getGuessesForMatch(
   match: WorldCupMatch,
   indexes: PredictionIndexes,
+  knockoutMatchIndex: KnockoutMatchIndex,
   occurrenceIndex: number,
 ): MatchdayGuess[] {
   const exactKey = getExactMatchKey(match.dateKey, match.homeTeam, match.awayTeam);
@@ -155,12 +162,15 @@ function getGuessesForMatch(
 
   if (exactGuesses && exactGuesses.length > 0) {
     for (const guess of exactGuesses) {
+      const evaluationMatch = getPredictionEvaluationMatch(match, knockoutMatchIndex, guess);
+      const teamsMatch = doPredictedTeamsMatchKnownFixtureTeams(evaluationMatch, guess);
+
       guessesByPlayer.set(guess.player, {
         ...guess,
-        resultMatch: getResultMatch(match, guess, true),
-        signMatch: getSignMatch(match, guess, true),
-        advancingTeamMatch: getAdvancingTeamMatch(match, guess),
-        teamsMatch: true,
+        resultMatch: getResultMatch(evaluationMatch, guess, teamsMatch),
+        signMatch: getSignMatch(evaluationMatch, guess, teamsMatch),
+        advancingTeamMatch: getAdvancingTeamMatch(knockoutMatchIndex, evaluationMatch, guess),
+        teamsMatch,
       });
     }
   }
@@ -177,7 +187,8 @@ function getGuessesForMatch(
       return [];
     }
 
-    const teamsMatch = doPredictedTeamsMatchKnownFixtureTeams(match, prediction);
+    const evaluationMatch = getPredictionEvaluationMatch(match, knockoutMatchIndex, prediction);
+    const teamsMatch = doPredictedTeamsMatchKnownFixtureTeams(evaluationMatch, prediction);
     const guess = {
       player,
       homeGoals: prediction.homeGoals,
@@ -187,9 +198,9 @@ function getGuessesForMatch(
       homeTeam: prediction.homeTeam,
       awayTeam: prediction.awayTeam,
       teamsMatch,
-      resultMatch: getResultMatch(match, prediction, teamsMatch),
-      signMatch: getSignMatch(match, prediction, teamsMatch),
-      advancingTeamMatch: getAdvancingTeamMatch(match, prediction),
+      resultMatch: getResultMatch(evaluationMatch, prediction, teamsMatch),
+      signMatch: getSignMatch(evaluationMatch, prediction, teamsMatch),
+      advancingTeamMatch: getAdvancingTeamMatch(knockoutMatchIndex, evaluationMatch, prediction),
     };
 
     return [guess];
@@ -206,6 +217,70 @@ function addExactGuess(
   const guesses = guessesByMatch.get(key) ?? [];
   guesses.push(guess);
   guessesByMatch.set(key, guesses);
+}
+
+function getKnockoutMatchIndex(matches: WorldCupMatch[]): KnockoutMatchIndex {
+  const advancedTeamsByStage = new Map<string, Map<string, MatchdayGuess['advancingTeamMatch']>>();
+  const matchesByTeamPair = new Map<string, WorldCupMatch>();
+
+  for (const match of matches) {
+    if (match.stage === 'GROUP_STAGE') {
+      continue;
+    }
+
+    const teamPairKey = getTeamPairKey(match.homeTeam, match.awayTeam);
+
+    if (teamPairKey) {
+      const existingMatch = matchesByTeamPair.get(teamPairKey);
+
+      if (!existingMatch || isMoreUsefulKnockoutMatch(match, existingMatch)) {
+        matchesByTeamPair.set(teamPairKey, match);
+      }
+    }
+
+    const advancingTeam = getActualAdvancingTeam(match);
+
+    if (advancingTeam) {
+      const teamsByStage = advancedTeamsByStage.get(match.stage) ?? new Map<string, MatchdayGuess['advancingTeamMatch']>();
+      teamsByStage.set(advancingTeam.normalizedName, {
+        flagSrc: getFlagSrc(advancingTeam.team),
+        team: advancingTeam.team,
+      });
+      advancedTeamsByStage.set(match.stage, teamsByStage);
+    }
+  }
+
+  return { advancedTeamsByStage, matchesByTeamPair };
+}
+
+function getPredictionEvaluationMatch(
+  displayedMatch: WorldCupMatch,
+  knockoutMatchIndex: KnockoutMatchIndex,
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam'>,
+): WorldCupMatch {
+  if (displayedMatch.stage === 'GROUP_STAGE') {
+    return displayedMatch;
+  }
+
+  const teamPairKey = getTeamPairKey(prediction.homeTeam, prediction.awayTeam);
+
+  if (!teamPairKey) {
+    return displayedMatch;
+  }
+
+  return knockoutMatchIndex.matchesByTeamPair.get(teamPairKey) ?? displayedMatch;
+}
+
+function isMoreUsefulKnockoutMatch(match: WorldCupMatch, existingMatch: WorldCupMatch): boolean {
+  if (getActualAdvancingTeam(match) && !getActualAdvancingTeam(existingMatch)) {
+    return true;
+  }
+
+  if (match.homeGoals !== null && match.awayGoals !== null && (existingMatch.homeGoals === null || existingMatch.awayGoals === null)) {
+    return true;
+  }
+
+  return false;
 }
 
 function getInitialDateKey(matchdays: MatchdayView[], todayKey: string): string | null {
@@ -226,6 +301,18 @@ function getInitialDateKey(matchdays: MatchdayView[], todayKey: string): string 
 
 function getExactMatchKey(dateKey: string, homeTeam: string, awayTeam: string): string {
   return `${dateKey}|${normalizeTeamName(homeTeam)}|${normalizeTeamName(awayTeam)}`;
+}
+
+function getTeamPairKey(homeTeam: string, awayTeam: string): string | null {
+  const teams = [normalizeTeamName(homeTeam), normalizeTeamName(awayTeam)]
+    .filter((team) => team !== 'tbd')
+    .sort((a, b) => a.localeCompare(b));
+
+  if (teams.length !== 2 || teams[0] === teams[1]) {
+    return null;
+  }
+
+  return teams.join('|');
 }
 
 function getDateTimeKey(dateKey: string, time: string | null): string {
@@ -283,7 +370,7 @@ function normalizeTeamName(team: string): string {
 
 function doPredictedTeamsMatchKnownFixtureTeams(
   match: WorldCupMatch,
-  prediction: PlayerBetMatch,
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam'>,
 ): boolean {
   const predictedTeams = new Set([
     normalizeTeamName(prediction.homeTeam),
@@ -298,7 +385,7 @@ function doPredictedTeamsMatchKnownFixtureTeams(
 
 function getResultMatch(
   match: WorldCupMatch,
-  prediction: Pick<PlayerBetMatch, 'homeGoals' | 'awayGoals'>,
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homeGoals' | 'awayGoals'>,
   teamsMatch: boolean,
 ): boolean | null {
   if (match.homeGoals === null || match.awayGoals === null) {
@@ -309,19 +396,18 @@ function getResultMatch(
     return false;
   }
 
-  const homeGoals = Number.parseInt(prediction.homeGoals, 10);
-  const awayGoals = Number.parseInt(prediction.awayGoals, 10);
+  const predictionGoals = getPredictionGoalsForMatch(match, prediction);
 
-  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) {
+  if (!predictionGoals) {
     return false;
   }
 
-  return homeGoals === match.homeGoals && awayGoals === match.awayGoals;
+  return predictionGoals.homeGoals === match.homeGoals && predictionGoals.awayGoals === match.awayGoals;
 }
 
 function getSignMatch(
   match: WorldCupMatch,
-  prediction: Pick<PlayerBetMatch, 'homeGoals' | 'awayGoals'>,
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homeGoals' | 'awayGoals'>,
   teamsMatch: boolean,
 ): boolean | null {
   if (match.homeGoals === null || match.awayGoals === null) {
@@ -332,17 +418,50 @@ function getSignMatch(
     return false;
   }
 
+  const predictionGoals = getPredictionGoalsForMatch(match, prediction);
+
+  if (!predictionGoals) {
+    return false;
+  }
+
+  return getResultSign(predictionGoals.homeGoals, predictionGoals.awayGoals) === getResultSign(match.homeGoals, match.awayGoals);
+}
+
+function getPredictionGoalsForMatch(
+  match: WorldCupMatch,
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homeGoals' | 'awayGoals'>,
+): { homeGoals: number; awayGoals: number } | null {
   const homeGoals = Number.parseInt(prediction.homeGoals, 10);
   const awayGoals = Number.parseInt(prediction.awayGoals, 10);
 
   if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) {
-    return false;
+    return null;
   }
 
-  return getResultSign(homeGoals, awayGoals) === getResultSign(match.homeGoals, match.awayGoals);
+  const predictedHomeTeam = normalizeTeamName(prediction.homeTeam);
+  const predictedAwayTeam = normalizeTeamName(prediction.awayTeam);
+  const actualHomeTeam = normalizeTeamName(match.homeTeam);
+  const actualAwayTeam = normalizeTeamName(match.awayTeam);
+
+  if (
+    predictedHomeTeam !== 'tbd' &&
+    predictedAwayTeam !== 'tbd' &&
+    actualHomeTeam !== 'tbd' &&
+    actualAwayTeam !== 'tbd' &&
+    predictedHomeTeam === actualAwayTeam &&
+    predictedAwayTeam === actualHomeTeam
+  ) {
+    return {
+      homeGoals: awayGoals,
+      awayGoals: homeGoals,
+    };
+  }
+
+  return { homeGoals, awayGoals };
 }
 
 function getAdvancingTeamMatch(
+  knockoutMatchIndex: KnockoutMatchIndex,
   match: WorldCupMatch,
   prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homeGoals' | 'awayGoals' | 'homePenaltyGoals' | 'awayPenaltyGoals'>,
 ): MatchdayGuess['advancingTeamMatch'] {
@@ -353,18 +472,22 @@ function getAdvancingTeamMatch(
   const actualAdvancingTeam = getActualAdvancingTeam(match);
   const predictedAdvancingTeam = getPredictedAdvancingTeam(prediction);
 
-  if (!actualAdvancingTeam || !predictedAdvancingTeam) {
+  if (!predictedAdvancingTeam) {
     return null;
   }
 
-  if (actualAdvancingTeam.normalizedName !== predictedAdvancingTeam.normalizedName) {
-    return null;
+  if (!actualAdvancingTeam) {
+    return knockoutMatchIndex.advancedTeamsByStage.get(match.stage)?.get(predictedAdvancingTeam.normalizedName) ?? null;
   }
 
-  return {
-    flagSrc: getFlagSrc(actualAdvancingTeam.team),
-    team: actualAdvancingTeam.team,
-  };
+  if (actualAdvancingTeam.normalizedName === predictedAdvancingTeam.normalizedName) {
+    return {
+      flagSrc: getFlagSrc(actualAdvancingTeam.team),
+      team: actualAdvancingTeam.team,
+    };
+  }
+
+  return knockoutMatchIndex.advancedTeamsByStage.get(match.stage)?.get(predictedAdvancingTeam.normalizedName) ?? null;
 }
 
 function getActualAdvancingTeam(match: WorldCupMatch): { normalizedName: string; team: string } | null {
