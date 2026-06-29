@@ -1,6 +1,6 @@
 {
   "competitionCode": "WC",
-  "generatedAt": "2026-06-27T08:41:53.597Z",
+  "generatedAt": "2026-06-29T19:03:49.546Z",
   "matches": [
     {
       "id": "537327",
@@ -932,13 +932,13 @@
       "dateKey": "2026-06-27",
       "utcDate": "2026-06-27T21:00:00.000Z",
       "displayTime": "23:00",
-      "status": "TIMED",
+      "status": "FINISHED",
       "stage": "GROUP_STAGE",
       "group": "GROUP_L",
       "homeTeam": "Panama",
       "awayTeam": "England",
-      "homeGoals": null,
-      "awayGoals": null
+      "homeGoals": 0,
+      "awayGoals": 2
     },
     {
       "id": "537414",
@@ -946,13 +946,13 @@
       "dateKey": "2026-06-27",
       "utcDate": "2026-06-27T21:00:00.000Z",
       "displayTime": "23:00",
-      "status": "TIMED",
+      "status": "FINISHED",
       "stage": "GROUP_STAGE",
       "group": "GROUP_L",
       "homeTeam": "Croatia",
       "awayTeam": "Ghana",
-      "homeGoals": null,
-      "awayGoals": null
+      "homeGoals": 2,
+      "awayGoals": 1
     },
     {
       "id": "537407",
@@ -960,13 +960,13 @@
       "dateKey": "2026-06-28",
       "utcDate": "2026-06-27T23:30:00.000Z",
       "displayTime": "01:30",
-      "status": "TIMED",
+      "status": "FINISHED",
       "stage": "GROUP_STAGE",
       "group": "GROUP_K",
       "homeTeam": "Colombia",
       "awayTeam": "Portugal",
-      "homeGoals": null,
-      "awayGoals": null
+      "homeGoals": 0,
+      "awayGoals": 0
     },
     {
       "id": "537408",
@@ -974,13 +974,13 @@
       "dateKey": "2026-06-28",
       "utcDate": "2026-06-27T23:30:00.000Z",
       "displayTime": "01:30",
-      "status": "TIMED",
+      "status": "FINISHED",
       "stage": "GROUP_STAGE",
       "group": "GROUP_K",
       "homeTeam": "Congo DR",
       "awayTeam": "Uzbekistan",
-      "homeGoals": null,
-      "awayGoals": null
+      "homeGoals": 3,
+      "awayGoals": 1
     },
     {
       "id": "537401",
@@ -988,13 +988,13 @@
       "dateKey": "2026-06-28",
       "utcDate": "2026-06-28T02:00:00.000Z",
       "displayTime": "04:00",
-      "status": "TIMED",
+      "status": "FINISHED",
       "stage": "GROUP_STAGE",
       "group": "GROUP_J",
       "homeTeam": "Jordan",
       "awayTeam": "Argentina",
-      "homeGoals": null,
-      "awayGoals": null
+      "homeGoals": 1,
+      "awayGoals": 3
     },
     {
       "id": "537402",
@@ -1002,13 +1002,13 @@
       "dateKey": "2026-06-28",
       "utcDate": "2026-06-28T02:00:00.000Z",
       "displayTime": "04:00",
-      "status": "TIMED",
+      "status": "FINISHED",
       "stage": "GROUP_STAGE",
       "group": "GROUP_J",
       "homeTeam": "Algeria",
       "awayTeam": "Austria",
-      "homeGoals": null,
-      "awayGoals": null
+      "homeGoals": 3,
+      "awayGoals": 3
     },
     {
       "id": "537417",
@@ -1016,13 +1016,13 @@
       "dateKey": "2026-06-28",
       "utcDate": "2026-06-28T19:00:00.000Z",
       "displayTime": "21:00",
-      "status": "TIMED",
+      "status": "FINISHED",
       "stage": "LAST_32",
       "group": null,
       "homeTeam": "South Africa",
       "awayTeam": "Canada",
-      "homeGoals": null,
-      "awayGoals": null
+      "homeGoals": 0,
+      "awayGoals": 1
     },
     {
       "id": "537423",
@@ -1030,13 +1030,13 @@
       "dateKey": "2026-06-29",
       "utcDate": "2026-06-29T17:00:00.000Z",
       "displayTime": "19:00",
-      "status": "TIMED",
+      "status": "IN_PLAY",
       "stage": "LAST_32",
       "group": null,
       "homeTeam": "Brazil",
       "awayTeam": "Japan",
-      "homeGoals": null,
-      "awayGoals": null
+      "homeGoals": 2,
+      "awayGoals": 1
     },
     {
       "id": "537415",
@@ -1048,7 +1048,7 @@
       "stage": "LAST_32",
       "group": null,
       "homeTeam": "Germany",
-      "awayTeam": "TBD",
+      "awayTeam": "Paraguay",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1076,7 +1076,7 @@
       "stage": "LAST_32",
       "group": null,
       "homeTeam": "Ivory Coast",
-      "awayTeam": "TBD",
+      "awayTeam": "Norway",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1089,8 +1089,8 @@
       "status": "TIMED",
       "stage": "LAST_32",
       "group": null,
-      "homeTeam": "TBD",
-      "awayTeam": "TBD",
+      "homeTeam": "France",
+      "awayTeam": "Sweden",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1104,7 +1104,7 @@
       "stage": "LAST_32",
       "group": null,
       "homeTeam": "Mexico",
-      "awayTeam": "TBD",
+      "awayTeam": "Ecuador",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1117,8 +1117,8 @@
       "status": "TIMED",
       "stage": "LAST_32",
       "group": null,
-      "homeTeam": "TBD",
-      "awayTeam": "TBD",
+      "homeTeam": "England",
+      "awayTeam": "Congo DR",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1131,8 +1131,8 @@
       "status": "TIMED",
       "stage": "LAST_32",
       "group": null,
-      "homeTeam": "TBD",
-      "awayTeam": "TBD",
+      "homeTeam": "Belgium",
+      "awayTeam": "Senegal",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1159,8 +1159,8 @@
       "status": "TIMED",
       "stage": "LAST_32",
       "group": null,
-      "homeTeam": "TBD",
-      "awayTeam": "TBD",
+      "homeTeam": "Spain",
+      "awayTeam": "Austria",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1173,8 +1173,8 @@
       "status": "TIMED",
       "stage": "LAST_32",
       "group": null,
-      "homeTeam": "TBD",
-      "awayTeam": "TBD",
+      "homeTeam": "Portugal",
+      "awayTeam": "Croatia",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1188,7 +1188,7 @@
       "stage": "LAST_32",
       "group": null,
       "homeTeam": "Switzerland",
-      "awayTeam": "TBD",
+      "awayTeam": "Algeria",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1202,7 +1202,7 @@
       "stage": "LAST_32",
       "group": null,
       "homeTeam": "Australia",
-      "awayTeam": "TBD",
+      "awayTeam": "Egypt",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1216,7 +1216,7 @@
       "stage": "LAST_32",
       "group": null,
       "homeTeam": "Argentina",
-      "awayTeam": "TBD",
+      "awayTeam": "Cape Verde Islands",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1229,8 +1229,8 @@
       "status": "TIMED",
       "stage": "LAST_32",
       "group": null,
-      "homeTeam": "TBD",
-      "awayTeam": "TBD",
+      "homeTeam": "Colombia",
+      "awayTeam": "Ghana",
       "homeGoals": null,
       "awayGoals": null
     },
@@ -1243,7 +1243,7 @@
       "status": "TIMED",
       "stage": "LAST_16",
       "group": null,
-      "homeTeam": "TBD",
+      "homeTeam": "Canada",
       "awayTeam": "TBD",
       "homeGoals": null,
       "awayGoals": null

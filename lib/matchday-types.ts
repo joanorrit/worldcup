@@ -1,12 +1,20 @@
+export interface MatchdayAdvancingTeamMatch {
+  flagSrc: string;
+  team: string;
+}
+
 export interface MatchdayGuess {
   player: string;
   homeGoals: string;
   awayGoals: string;
+  homePenaltyGoals: string;
+  awayPenaltyGoals: string;
   homeTeam: string;
   awayTeam: string;
   teamsMatch: boolean;
   resultMatch: boolean | null;
   signMatch: boolean | null;
+  advancingTeamMatch: MatchdayAdvancingTeamMatch | null;
 }
 
 export interface MatchdayMatch {

@@ -14,6 +14,8 @@ export const WORLD_CUP_COMPETITION_CODE = process.env.FOOTBALL_DATA_COMPETITION_
 export const WORLD_CUP_SEASON = Number.parseInt(process.env.WORLD_CUP_SEASON ?? '2026', 10);
 export const WORLD_CUP_TIME_ZONE = process.env.WORLD_CUP_TIME_ZONE ?? 'Europe/Madrid';
 
+export type WorldCupWinner = 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW';
+
 export interface WorldCupMatch {
   id: string;
   sourceId: number;
@@ -27,6 +29,7 @@ export interface WorldCupMatch {
   awayTeam: string;
   homeGoals: number | null;
   awayGoals: number | null;
+  winner?: WorldCupWinner | null;
 }
 
 export interface WorldCupMatchCache {
@@ -52,6 +55,7 @@ interface FootballDataMatch {
       away?: number | null;
       home?: number | null;
     } | null;
+    winner?: string | null;
   } | null;
   stage?: string | null;
   status?: string | null;
@@ -250,6 +254,7 @@ function normalizeFootballDataMatch(match: FootballDataMatch): WorldCupMatch | n
     awayTeam: getTeamName(match.awayTeam, 'TBD'),
     homeGoals: getScoreValue(match.score?.fullTime?.home),
     awayGoals: getScoreValue(match.score?.fullTime?.away),
+    winner: getWinnerValue(match.score?.winner),
   };
 }
 
@@ -259,6 +264,10 @@ function getTeamName(team: FootballDataTeam | null | undefined, fallback: string
 
 function getScoreValue(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function getWinnerValue(value: string | null | undefined): WorldCupWinner | null {
+  return value === 'HOME_TEAM' || value === 'AWAY_TEAM' || value === 'DRAW' ? value : null;
 }
 
 function getDateKey(date: Date, timeZone: string): string {

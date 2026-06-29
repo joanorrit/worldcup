@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type {
   HomepageMatchdayData,
@@ -273,14 +274,41 @@ function GuessList({ guesses, match }: { guesses: MatchdayGuess[]; match: Matchd
               className={`grid grid-cols-[minmax(5rem,0.26fr)_minmax(0,1fr)] items-center gap-3 px-3 py-2 text-sm ${tone.rowClassName}`}
             >
               <span className={`min-w-0 truncate font-medium ${tone.playerClassName}`}>{guess.player}</span>
-              <span className={`max-w-full min-w-0 justify-self-end truncate border px-2 py-1 text-right font-mono text-[0.78rem] leading-none tabular-nums ${tone.detailClassName}`}>
-                {formatGuess(guess)}
+              <span className="flex max-w-full min-w-0 items-center justify-end gap-1.5">
+                {guess.advancingTeamMatch ? (
+                  <AdvancingTeamChip
+                    flagSrc={guess.advancingTeamMatch.flagSrc}
+                    team={guess.advancingTeamMatch.team}
+                  />
+                ) : null}
+                <span className={`max-w-full min-w-0 truncate border px-2 py-1 text-right font-mono text-[0.78rem] leading-none tabular-nums ${tone.detailClassName}`}>
+                  {formatGuess(guess)}
+                </span>
               </span>
             </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function AdvancingTeamChip({ flagSrc, team }: { flagSrc: string; team: string }) {
+  return (
+    <span
+      aria-label={`${team} advanced`}
+      className="inline-flex h-5 w-7 shrink-0 items-center justify-center overflow-hidden border border-[#4B607C4D] bg-[#EEF1F3]"
+      title={`${team} advanced`}
+    >
+      <Image
+        src={flagSrc}
+        alt=""
+        width={18}
+        height={12}
+        sizes="18px"
+        className="h-3 w-[18px] object-cover"
+      />
+    </span>
   );
 }
 

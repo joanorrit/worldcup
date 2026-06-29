@@ -27,6 +27,8 @@ export interface PlayerBetMatch {
   stage: 'Group Stage' | 'Knockout Stage';
   homeTeam: string;
   awayTeam: string;
+  homePenaltyGoals: string;
+  awayPenaltyGoals: string;
   homeGoals: string;
   awayGoals: string;
 }
@@ -185,6 +187,8 @@ function normalizeMatchRow(row: string[], dateOrder: DateOrder): PlayerBetMatch 
     stage: round.startsWith('J') ? 'Group Stage' : 'Knockout Stage',
     homeTeam,
     awayTeam,
+    homePenaltyGoals: getCell(row, 27),
+    awayPenaltyGoals: getCell(row, 30),
     homeGoals: getCell(row, 28),
     awayGoals: getCell(row, 29),
   };

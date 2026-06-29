@@ -91,19 +91,24 @@ async function getPredictionIndexes(): Promise<PredictionIndexes> {
         player,
         homeGoals: match.homeGoals,
         awayGoals: match.awayGoals,
+        homePenaltyGoals: match.homePenaltyGoals,
+        awayPenaltyGoals: match.awayPenaltyGoals,
         homeTeam: match.homeTeam,
         awayTeam: match.awayTeam,
         teamsMatch: false,
         resultMatch: null,
         signMatch: null,
+        advancingTeamMatch: null,
       };
 
       addExactGuess(exactGuesses, getExactMatchKey(dateKey, match.homeTeam, match.awayTeam), guess);
       addExactGuess(exactGuesses, getExactMatchKey(dateKey, match.awayTeam, match.homeTeam), {
         ...guess,
         awayGoals: match.homeGoals,
+        awayPenaltyGoals: match.homePenaltyGoals,
         awayTeam: match.homeTeam,
         homeGoals: match.awayGoals,
+        homePenaltyGoals: match.awayPenaltyGoals,
         homeTeam: match.awayTeam,
       });
 
@@ -154,6 +159,7 @@ function getGuessesForMatch(
         ...guess,
         resultMatch: getResultMatch(match, guess, true),
         signMatch: getSignMatch(match, guess, true),
+        advancingTeamMatch: getAdvancingTeamMatch(match, guess),
         teamsMatch: true,
       });
     }
@@ -176,11 +182,14 @@ function getGuessesForMatch(
       player,
       homeGoals: prediction.homeGoals,
       awayGoals: prediction.awayGoals,
+      homePenaltyGoals: prediction.homePenaltyGoals,
+      awayPenaltyGoals: prediction.awayPenaltyGoals,
       homeTeam: prediction.homeTeam,
       awayTeam: prediction.awayTeam,
       teamsMatch,
       resultMatch: getResultMatch(match, prediction, teamsMatch),
       signMatch: getSignMatch(match, prediction, teamsMatch),
+      advancingTeamMatch: getAdvancingTeamMatch(match, prediction),
     };
 
     return [guess];
@@ -333,6 +342,85 @@ function getSignMatch(
   return getResultSign(homeGoals, awayGoals) === getResultSign(match.homeGoals, match.awayGoals);
 }
 
+function getAdvancingTeamMatch(
+  match: WorldCupMatch,
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homeGoals' | 'awayGoals' | 'homePenaltyGoals' | 'awayPenaltyGoals'>,
+): MatchdayGuess['advancingTeamMatch'] {
+  if (match.stage === 'GROUP_STAGE') {
+    return null;
+  }
+
+  const actualAdvancingTeam = getActualAdvancingTeam(match);
+  const predictedAdvancingTeam = getPredictedAdvancingTeam(prediction);
+
+  if (!actualAdvancingTeam || !predictedAdvancingTeam) {
+    return null;
+  }
+
+  if (actualAdvancingTeam.normalizedName !== predictedAdvancingTeam.normalizedName) {
+    return null;
+  }
+
+  return {
+    flagSrc: getFlagSrc(actualAdvancingTeam.team),
+    team: actualAdvancingTeam.team,
+  };
+}
+
+function getActualAdvancingTeam(match: WorldCupMatch): { normalizedName: string; team: string } | null {
+  if (match.winner === 'HOME_TEAM') {
+    return getKnownTeam(match.homeTeam);
+  }
+
+  if (match.winner === 'AWAY_TEAM') {
+    return getKnownTeam(match.awayTeam);
+  }
+
+  if (match.homeGoals === null || match.awayGoals === null || match.homeGoals === match.awayGoals) {
+    return null;
+  }
+
+  return getKnownTeam(match.homeGoals > match.awayGoals ? match.homeTeam : match.awayTeam);
+}
+
+function getPredictedAdvancingTeam(
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homeGoals' | 'awayGoals' | 'homePenaltyGoals' | 'awayPenaltyGoals'>,
+): { normalizedName: string; team: string } | null {
+  const homeGoals = Number.parseInt(prediction.homeGoals, 10);
+  const awayGoals = Number.parseInt(prediction.awayGoals, 10);
+
+  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) {
+    return null;
+  }
+
+  if (homeGoals > awayGoals) {
+    return getKnownTeam(prediction.homeTeam);
+  }
+
+  if (homeGoals < awayGoals) {
+    return getKnownTeam(prediction.awayTeam);
+  }
+
+  const homePenaltyGoals = Number.parseInt(prediction.homePenaltyGoals, 10);
+  const awayPenaltyGoals = Number.parseInt(prediction.awayPenaltyGoals, 10);
+
+  if (!Number.isFinite(homePenaltyGoals) || !Number.isFinite(awayPenaltyGoals) || homePenaltyGoals === awayPenaltyGoals) {
+    return null;
+  }
+
+  return getKnownTeam(homePenaltyGoals > awayPenaltyGoals ? prediction.homeTeam : prediction.awayTeam);
+}
+
+function getKnownTeam(team: string): { normalizedName: string; team: string } | null {
+  const normalizedName = normalizeTeamName(team);
+
+  if (normalizedName === 'tbd') {
+    return null;
+  }
+
+  return { normalizedName, team };
+}
+
 function getResultSign(homeGoals: number, awayGoals: number): -1 | 0 | 1 {
   if (homeGoals > awayGoals) {
     return 1;
@@ -355,6 +443,15 @@ function formatPlayerName(player: string) {
 
 function isMissingFileError(error: unknown) {
   return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT');
+}
+
+function getFlagSrc(team: string): string {
+  return `/flags/${team
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')}.png`;
 }
 
 const TEAM_ALIASES: Record<string, string> = {
