@@ -7,6 +7,7 @@ import { getPlayerBets, type PlayerBetMatch } from '@/lib/player-bets';
 import type {
   HomepageMatchdayData,
   MatchdayGuess,
+  MatchdayTeamMeta,
   MatchdayView,
 } from '@/lib/matchday-types';
 import { getWorldCupMatchCache, WORLD_CUP_TIME_ZONE, type WorldCupMatch } from '@/lib/world-cup-matches';
@@ -28,7 +29,7 @@ interface PredictionIndexes {
 }
 
 interface KnockoutMatchIndex {
-  advancedTeamsByStage: Map<string, Map<string, MatchdayGuess['advancingTeamMatch']>>;
+  advancedTeamsByStage: Map<string, Set<string>>;
   matchesByTeamPair: Map<string, WorldCupMatch>;
 }
 
@@ -46,7 +47,9 @@ export const getHomepageMatchdays = cache(async (): Promise<HomepageMatchdayData
 
     const viewMatch = {
       ...match,
+      awayTeamMeta: getTeamMeta(match.awayTeam),
       guesses: getGuessesForMatch(match, predictionIndexes, knockoutMatchIndex, occurrenceIndex),
+      homeTeamMeta: getTeamMeta(match.homeTeam),
     };
     const day = days.find((entry) => entry.dateKey === viewMatch.dateKey);
 
@@ -100,11 +103,14 @@ async function getPredictionIndexes(): Promise<PredictionIndexes> {
         homePenaltyGoals: match.homePenaltyGoals,
         awayPenaltyGoals: match.awayPenaltyGoals,
         homeTeam: match.homeTeam,
+        homeTeamMeta: getTeamMeta(match.homeTeam),
         awayTeam: match.awayTeam,
+        awayTeamMeta: getTeamMeta(match.awayTeam),
         teamsMatch: false,
         resultMatch: null,
         signMatch: null,
-        advancingTeamMatch: null,
+        knockoutAdvancementMatch: null,
+        penaltyScoreMatch: null,
       };
 
       addExactGuess(exactGuesses, getExactMatchKey(dateKey, match.homeTeam, match.awayTeam), guess);
@@ -113,9 +119,11 @@ async function getPredictionIndexes(): Promise<PredictionIndexes> {
         awayGoals: match.homeGoals,
         awayPenaltyGoals: match.homePenaltyGoals,
         awayTeam: match.homeTeam,
+        awayTeamMeta: getTeamMeta(match.homeTeam),
         homeGoals: match.awayGoals,
         homePenaltyGoals: match.awayPenaltyGoals,
         homeTeam: match.awayTeam,
+        homeTeamMeta: getTeamMeta(match.awayTeam),
       });
 
       const dateTimeKey = getDateTimeKey(dateKey, match.time);
@@ -169,7 +177,8 @@ function getGuessesForMatch(
         ...guess,
         resultMatch: getResultMatch(evaluationMatch, guess, teamsMatch),
         signMatch: getSignMatch(evaluationMatch, guess, teamsMatch),
-        advancingTeamMatch: getAdvancingTeamMatch(knockoutMatchIndex, evaluationMatch, guess),
+        knockoutAdvancementMatch: getKnockoutAdvancementMatch(knockoutMatchIndex, evaluationMatch, guess),
+        penaltyScoreMatch: getPenaltyScoreMatch(evaluationMatch, guess, teamsMatch),
         teamsMatch,
       });
     }
@@ -196,11 +205,14 @@ function getGuessesForMatch(
       homePenaltyGoals: prediction.homePenaltyGoals,
       awayPenaltyGoals: prediction.awayPenaltyGoals,
       homeTeam: prediction.homeTeam,
+      homeTeamMeta: getTeamMeta(prediction.homeTeam),
       awayTeam: prediction.awayTeam,
+      awayTeamMeta: getTeamMeta(prediction.awayTeam),
       teamsMatch,
       resultMatch: getResultMatch(evaluationMatch, prediction, teamsMatch),
       signMatch: getSignMatch(evaluationMatch, prediction, teamsMatch),
-      advancingTeamMatch: getAdvancingTeamMatch(knockoutMatchIndex, evaluationMatch, prediction),
+      knockoutAdvancementMatch: getKnockoutAdvancementMatch(knockoutMatchIndex, evaluationMatch, prediction),
+      penaltyScoreMatch: getPenaltyScoreMatch(evaluationMatch, prediction, teamsMatch),
     };
 
     return [guess];
@@ -220,7 +232,7 @@ function addExactGuess(
 }
 
 function getKnockoutMatchIndex(matches: WorldCupMatch[]): KnockoutMatchIndex {
-  const advancedTeamsByStage = new Map<string, Map<string, MatchdayGuess['advancingTeamMatch']>>();
+  const advancedTeamsByStage = new Map<string, Set<string>>();
   const matchesByTeamPair = new Map<string, WorldCupMatch>();
 
   for (const match of matches) {
@@ -241,11 +253,8 @@ function getKnockoutMatchIndex(matches: WorldCupMatch[]): KnockoutMatchIndex {
     const advancingTeam = getActualAdvancingTeam(match);
 
     if (advancingTeam) {
-      const teamsByStage = advancedTeamsByStage.get(match.stage) ?? new Map<string, MatchdayGuess['advancingTeamMatch']>();
-      teamsByStage.set(advancingTeam.normalizedName, {
-        flagSrc: getFlagSrc(advancingTeam.team),
-        team: advancingTeam.team,
-      });
+      const teamsByStage = advancedTeamsByStage.get(match.stage) ?? new Set<string>();
+      teamsByStage.add(advancingTeam.normalizedName);
       advancedTeamsByStage.set(match.stage, teamsByStage);
     }
   }
@@ -460,11 +469,11 @@ function getPredictionGoalsForMatch(
   return { homeGoals, awayGoals };
 }
 
-function getAdvancingTeamMatch(
+function getKnockoutAdvancementMatch(
   knockoutMatchIndex: KnockoutMatchIndex,
   match: WorldCupMatch,
   prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homeGoals' | 'awayGoals' | 'homePenaltyGoals' | 'awayPenaltyGoals'>,
-): MatchdayGuess['advancingTeamMatch'] {
+): boolean | null {
   if (match.stage === 'GROUP_STAGE') {
     return null;
   }
@@ -476,18 +485,73 @@ function getAdvancingTeamMatch(
     return null;
   }
 
-  if (!actualAdvancingTeam) {
-    return knockoutMatchIndex.advancedTeamsByStage.get(match.stage)?.get(predictedAdvancingTeam.normalizedName) ?? null;
+  if (knockoutMatchIndex.advancedTeamsByStage.get(match.stage)?.has(predictedAdvancingTeam.normalizedName)) {
+    return true;
   }
 
-  if (actualAdvancingTeam.normalizedName === predictedAdvancingTeam.normalizedName) {
+  if (!actualAdvancingTeam) {
+    return null;
+  }
+
+  return false;
+}
+
+function getPenaltyScoreMatch(
+  match: WorldCupMatch,
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homePenaltyGoals' | 'awayPenaltyGoals'>,
+  teamsMatch: boolean,
+): boolean | null {
+  if (match.homePenaltyGoals === null || match.awayPenaltyGoals === null) {
+    return null;
+  }
+
+  if (!teamsMatch) {
+    return false;
+  }
+
+  const predictionPenaltyGoals = getPredictionPenaltyGoalsForMatch(match, prediction);
+
+  if (!predictionPenaltyGoals) {
+    return false;
+  }
+
+  return (
+    predictionPenaltyGoals.homePenaltyGoals === match.homePenaltyGoals &&
+    predictionPenaltyGoals.awayPenaltyGoals === match.awayPenaltyGoals
+  );
+}
+
+function getPredictionPenaltyGoalsForMatch(
+  match: WorldCupMatch,
+  prediction: Pick<PlayerBetMatch, 'homeTeam' | 'awayTeam' | 'homePenaltyGoals' | 'awayPenaltyGoals'>,
+): { homePenaltyGoals: number; awayPenaltyGoals: number } | null {
+  const homePenaltyGoals = Number.parseInt(prediction.homePenaltyGoals, 10);
+  const awayPenaltyGoals = Number.parseInt(prediction.awayPenaltyGoals, 10);
+
+  if (!Number.isFinite(homePenaltyGoals) || !Number.isFinite(awayPenaltyGoals)) {
+    return null;
+  }
+
+  const predictedHomeTeam = normalizeTeamName(prediction.homeTeam);
+  const predictedAwayTeam = normalizeTeamName(prediction.awayTeam);
+  const actualHomeTeam = normalizeTeamName(match.homeTeam);
+  const actualAwayTeam = normalizeTeamName(match.awayTeam);
+
+  if (
+    predictedHomeTeam !== 'tbd' &&
+    predictedAwayTeam !== 'tbd' &&
+    actualHomeTeam !== 'tbd' &&
+    actualAwayTeam !== 'tbd' &&
+    predictedHomeTeam === actualAwayTeam &&
+    predictedAwayTeam === actualHomeTeam
+  ) {
     return {
-      flagSrc: getFlagSrc(actualAdvancingTeam.team),
-      team: actualAdvancingTeam.team,
+      homePenaltyGoals: awayPenaltyGoals,
+      awayPenaltyGoals: homePenaltyGoals,
     };
   }
 
-  return knockoutMatchIndex.advancedTeamsByStage.get(match.stage)?.get(predictedAdvancingTeam.normalizedName) ?? null;
+  return { homePenaltyGoals, awayPenaltyGoals };
 }
 
 function getActualAdvancingTeam(match: WorldCupMatch): { normalizedName: string; team: string } | null {
@@ -568,14 +632,86 @@ function isMissingFileError(error: unknown) {
   return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT');
 }
 
-function getFlagSrc(team: string): string {
-  return `/flags/${team
+function getTeamMeta(team: string): MatchdayTeamMeta {
+  const normalizedName = normalizeTeamName(team);
+  const knownTeam = TEAM_META_BY_NORMALIZED_NAME[normalizedName];
+
+  if (!knownTeam) {
+    return {
+      code: normalizedName === 'tbd' ? 'TBD' : getFallbackTeamCode(team),
+      flagSrc: null,
+      team,
+    };
+  }
+
+  return {
+    code: knownTeam.code,
+    flagSrc: `/flags/${knownTeam.flagSlug}.png`,
+    team,
+  };
+}
+
+function getFallbackTeamCode(team: string): string {
+  const code = team
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')}.png`;
+    .replace(/[^a-z0-9]+/gi, '')
+    .slice(0, 3)
+    .toUpperCase();
+
+  return code || 'TBD';
 }
+
+const TEAM_META_BY_NORMALIZED_NAME: Record<string, { code: string; flagSlug: string }> = {
+  algeria: { code: 'ALG', flagSlug: 'algeria' },
+  argentina: { code: 'ARG', flagSlug: 'argentina' },
+  australia: { code: 'AUS', flagSlug: 'australia' },
+  austria: { code: 'AUT', flagSlug: 'austria' },
+  belgium: { code: 'BEL', flagSlug: 'belgium' },
+  'bosnia and herzegovina': { code: 'BIH', flagSlug: 'bosnia-herzegovina' },
+  brazil: { code: 'BRA', flagSlug: 'brazil' },
+  canada: { code: 'CAN', flagSlug: 'canada' },
+  'cape verde': { code: 'CPV', flagSlug: 'cape-verde-islands' },
+  colombia: { code: 'COL', flagSlug: 'colombia' },
+  'congo dr': { code: 'COD', flagSlug: 'congo-dr' },
+  croatia: { code: 'CRO', flagSlug: 'croatia' },
+  curacao: { code: 'CUW', flagSlug: 'curacao' },
+  czechia: { code: 'CZE', flagSlug: 'czechia' },
+  ecuador: { code: 'ECU', flagSlug: 'ecuador' },
+  egypt: { code: 'EGY', flagSlug: 'egypt' },
+  england: { code: 'ENG', flagSlug: 'england' },
+  france: { code: 'FRA', flagSlug: 'france' },
+  germany: { code: 'GER', flagSlug: 'germany' },
+  ghana: { code: 'GHA', flagSlug: 'ghana' },
+  haiti: { code: 'HAI', flagSlug: 'haiti' },
+  iran: { code: 'IRN', flagSlug: 'iran' },
+  iraq: { code: 'IRQ', flagSlug: 'iraq' },
+  'ivory coast': { code: 'CIV', flagSlug: 'ivory-coast' },
+  japan: { code: 'JPN', flagSlug: 'japan' },
+  jordan: { code: 'JOR', flagSlug: 'jordan' },
+  mexico: { code: 'MEX', flagSlug: 'mexico' },
+  morocco: { code: 'MAR', flagSlug: 'morocco' },
+  netherlands: { code: 'NED', flagSlug: 'netherlands' },
+  'new zealand': { code: 'NZL', flagSlug: 'new-zealand' },
+  norway: { code: 'NOR', flagSlug: 'norway' },
+  panama: { code: 'PAN', flagSlug: 'panama' },
+  paraguay: { code: 'PAR', flagSlug: 'paraguay' },
+  portugal: { code: 'POR', flagSlug: 'portugal' },
+  qatar: { code: 'QAT', flagSlug: 'qatar' },
+  'saudi arabia': { code: 'KSA', flagSlug: 'saudi-arabia' },
+  scotland: { code: 'SCO', flagSlug: 'scotland' },
+  senegal: { code: 'SEN', flagSlug: 'senegal' },
+  'south africa': { code: 'RSA', flagSlug: 'south-africa' },
+  'south korea': { code: 'KOR', flagSlug: 'south-korea' },
+  spain: { code: 'ESP', flagSlug: 'spain' },
+  sweden: { code: 'SWE', flagSlug: 'sweden' },
+  switzerland: { code: 'SUI', flagSlug: 'switzerland' },
+  tunisia: { code: 'TUN', flagSlug: 'tunisia' },
+  turkey: { code: 'TUR', flagSlug: 'turkey' },
+  'united states': { code: 'USA', flagSlug: 'united-states' },
+  uruguay: { code: 'URU', flagSlug: 'uruguay' },
+  uzbekistan: { code: 'UZB', flagSlug: 'uzbekistan' },
+};
 
 const TEAM_ALIASES: Record<string, string> = {
   alemania: 'germany',

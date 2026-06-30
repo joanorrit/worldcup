@@ -6,6 +6,7 @@ import type {
   HomepageMatchdayData,
   MatchdayGuess,
   MatchdayMatch,
+  MatchdayTeamMeta,
   MatchdayView,
 } from '@/lib/matchday-types';
 
@@ -309,7 +310,7 @@ function GuessList({
     <div className="border-t border-[#8B847D2E] px-4 py-2.5 sm:px-5">
       <div className="divide-y divide-[#8B847D24] border border-[#8B847D24] bg-[#F4F2F0]">
         {guesses.map((guess) => {
-          const tone = getGuessTone(guess, accessibleColors);
+          const tone = getGuessTone(guess, accessibleColors, match);
 
           return (
             <div
@@ -317,14 +318,9 @@ function GuessList({
               className={`grid grid-cols-[minmax(5rem,0.26fr)_minmax(0,1fr)] items-center gap-3 px-3 py-2 text-sm ${tone.rowClassName}`}
             >
               <span className={`min-w-0 truncate font-medium ${tone.playerClassName}`}>{guess.player}</span>
-              <span className="flex max-w-full min-w-0 items-center justify-end gap-1.5">
-                {guess.advancingTeamMatch ? (
-                  <AdvancingTeamChip
-                    flagSrc={guess.advancingTeamMatch.flagSrc}
-                    team={guess.advancingTeamMatch.team}
-                  />
-                ) : null}
-                <span className={`max-w-full min-w-0 truncate border px-2 py-1 text-right font-mono text-[0.78rem] leading-none tabular-nums ${tone.detailClassName}`}>
+              <span className="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-1.5">
+                <GuessBadges guess={guess} />
+                <span className={`max-w-full min-w-0 overflow-hidden border px-2 py-1 text-right font-mono text-[0.78rem] leading-none tabular-nums ${tone.detailClassName}`}>
                   <GuessSummary guess={guess} />
                 </span>
               </span>
@@ -336,20 +332,82 @@ function GuessList({
   );
 }
 
-function AdvancingTeamChip({ flagSrc, team }: { flagSrc: string; team: string }) {
+function TeamLabel({ meta, showName = false }: { meta: MatchdayTeamMeta; showName?: boolean }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5" title={meta.team}>
+      <TeamFlag meta={meta} />
+      <span
+        className={
+          showName
+            ? 'min-w-0 truncate'
+            : 'font-mono text-[0.72rem] uppercase tracking-[0.08em]'
+        }
+      >
+        {showName ? meta.team : meta.code}
+      </span>
+    </span>
+  );
+}
+
+function TeamFlag({ meta }: { meta: MatchdayTeamMeta }) {
+  if (!meta.flagSrc) {
+    return null;
+  }
+
+  return (
+    <span className="inline-flex h-4 w-6 shrink-0 items-center justify-center overflow-hidden border border-[#8B847D40] bg-[#F4F2F0]">
+      <Image
+        src={meta.flagSrc}
+        alt=""
+        width={24}
+        height={16}
+        sizes="24px"
+        className="h-4 w-6 object-cover"
+      />
+    </span>
+  );
+}
+
+function GuessBadges({ guess }: { guess: MatchdayGuess }) {
+  const showPenaltyBadge =
+    guess.penaltyScoreMatch === true && (guess.resultMatch === true || guess.signMatch === true);
+
+  if (guess.knockoutAdvancementMatch !== true && !showPenaltyBadge) {
+    return null;
+  }
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1">
+      {guess.knockoutAdvancementMatch === true ? (
+        <GuessBadge
+          label="Correct knockout pass"
+          src="/logos/knockout.png"
+        />
+      ) : null}
+      {showPenaltyBadge ? (
+        <GuessBadge
+          label="Correct penalty score"
+          src="/logos/penalties.png"
+        />
+      ) : null}
+    </span>
+  );
+}
+
+function GuessBadge({ label, src }: { label: string; src: string }) {
   return (
     <span
-      aria-label={`${team} advanced`}
-      className="inline-flex h-5 w-7 shrink-0 items-center justify-center overflow-hidden border border-[#4B607C4D] bg-[#EEF1F3]"
-      title={`${team} advanced`}
+      aria-label={label}
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden border border-[#4B607C33] bg-transparent"
+      title={label}
     >
       <Image
-        src={flagSrc}
+        src={src}
         alt=""
-        width={18}
-        height={12}
-        sizes="18px"
-        className="h-3 w-[18px] object-cover"
+        width={28}
+        height={28}
+        sizes="28px"
+        className="h-7 w-7 object-contain"
       />
     </span>
   );
@@ -389,15 +447,22 @@ function MatchSummary({ match }: { match: MatchdayMatch }) {
       <ScoreSummary
         awayGoals={match.awayGoals}
         awayPenaltyGoals={match.awayPenaltyGoals}
-        awayTeam={match.awayTeam}
+        awayTeamMeta={match.awayTeamMeta}
         homeGoals={match.homeGoals}
         homePenaltyGoals={match.homePenaltyGoals}
-        homeTeam={match.homeTeam}
+        homeTeamMeta={match.homeTeamMeta}
+        showTeamNames
       />
     );
   }
 
-  return <>{match.homeTeam} vs {match.awayTeam}</>;
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <TeamLabel meta={match.homeTeamMeta} showName />
+      <span className="font-mono text-[0.72rem] uppercase text-[#5C5752]">vs</span>
+      <TeamLabel meta={match.awayTeamMeta} showName />
+    </span>
+  );
 }
 
 function getStatusLabel(match: MatchdayMatch): string {
@@ -443,7 +508,15 @@ function hasVisibleScore(match: MatchdayMatch): boolean {
   );
 }
 
-function getGuessTone(guess: MatchdayGuess, accessibleColors: boolean) {
+function getGuessTone(guess: MatchdayGuess, accessibleColors: boolean, match: MatchdayMatch) {
+  if (match.stage !== 'GROUP_STAGE' && guess.resultMatch === true && guess.penaltyScoreMatch === true) {
+    return {
+      rowClassName: 'bg-[linear-gradient(90deg,#E8A3A34D,#E8CB7B4D,#C8DD8B4D,#8FD6C94D,#9DB6E84D,#D4A3DC4D)] odd:bg-[linear-gradient(90deg,#E8A3A35C,#E8CB7B5C,#C8DD8B5C,#8FD6C95C,#9DB6E85C,#D4A3DC5C)]',
+      playerClassName: 'text-[#252F3D]',
+      detailClassName: 'border-[#8B847D59] bg-[#F4F2F0]/75 text-[#252F3D]',
+    };
+  }
+
   if (guess.resultMatch === true) {
     return accessibleColors
       ? {
@@ -498,10 +571,10 @@ function GuessSummary({ guess }: { guess: MatchdayGuess }) {
     <ScoreSummary
       awayGoals={guess.awayGoals || '-'}
       awayPenaltyGoals={guess.awayPenaltyGoals}
-      awayTeam={guess.awayTeam}
+      awayTeamMeta={guess.awayTeamMeta}
       homeGoals={guess.homeGoals || '-'}
       homePenaltyGoals={guess.homePenaltyGoals}
-      homeTeam={guess.homeTeam}
+      homeTeamMeta={guess.homeTeamMeta}
     />
   );
 }
@@ -509,28 +582,33 @@ function GuessSummary({ guess }: { guess: MatchdayGuess }) {
 function ScoreSummary({
   awayGoals,
   awayPenaltyGoals,
-  awayTeam,
+  awayTeamMeta,
   homeGoals,
   homePenaltyGoals,
-  homeTeam,
+  homeTeamMeta,
+  showTeamNames = false,
 }: {
   awayGoals: number | string | null;
   awayPenaltyGoals: number | string | null;
-  awayTeam: string;
+  awayTeamMeta: MatchdayTeamMeta;
   homeGoals: number | string | null;
   homePenaltyGoals: number | string | null;
-  homeTeam: string;
+  homeTeamMeta: MatchdayTeamMeta;
+  showTeamNames?: boolean;
 }) {
   return (
-    <>
-      {homeTeam} {formatScoreValue(homeGoals)}-{formatScoreValue(awayGoals)}
-      {hasPenaltyScore(homePenaltyGoals, awayPenaltyGoals) ? (
-        <span className="text-[0.68em] font-medium text-[#5C5752]">
-          {' '}({formatScoreValue(homePenaltyGoals)}-{formatScoreValue(awayPenaltyGoals)})
-        </span>
-      ) : null}
-      {' '}{awayTeam}
-    </>
+    <span className="inline-flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
+      <TeamLabel meta={homeTeamMeta} showName={showTeamNames} />
+      <span className="inline-flex shrink-0 items-baseline gap-1">
+        <span>{formatScoreValue(homeGoals)}-{formatScoreValue(awayGoals)}</span>
+        {hasPenaltyScore(homePenaltyGoals, awayPenaltyGoals) ? (
+          <span className="text-[0.68em] font-medium text-[#5C5752]">
+            ({formatScoreValue(homePenaltyGoals)}-{formatScoreValue(awayPenaltyGoals)})
+          </span>
+        ) : null}
+      </span>
+      <TeamLabel meta={awayTeamMeta} showName={showTeamNames} />
+    </span>
   );
 }
 

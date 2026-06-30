@@ -1,5 +1,6 @@
-export interface MatchdayAdvancingTeamMatch {
-  flagSrc: string;
+export interface MatchdayTeamMeta {
+  code: string;
+  flagSrc: string | null;
   team: string;
 }
 
@@ -10,11 +11,14 @@ export interface MatchdayGuess {
   homePenaltyGoals: string;
   awayPenaltyGoals: string;
   homeTeam: string;
+  homeTeamMeta: MatchdayTeamMeta;
   awayTeam: string;
+  awayTeamMeta: MatchdayTeamMeta;
   teamsMatch: boolean;
   resultMatch: boolean | null;
   signMatch: boolean | null;
-  advancingTeamMatch: MatchdayAdvancingTeamMatch | null;
+  knockoutAdvancementMatch: boolean | null;
+  penaltyScoreMatch: boolean | null;
 }
 
 export interface MatchdayMatch {
@@ -26,7 +30,9 @@ export interface MatchdayMatch {
   stage: string;
   group: string | null;
   homeTeam: string;
+  homeTeamMeta: MatchdayTeamMeta;
   awayTeam: string;
+  awayTeamMeta: MatchdayTeamMeta;
   homeGoals: number | null;
   awayGoals: number | null;
   homePenaltyGoals: number | null;
