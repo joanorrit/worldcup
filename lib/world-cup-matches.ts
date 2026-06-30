@@ -1,12 +1,15 @@
 import 'server-only';
 
 import { list, put } from '@vercel/blob';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
 const LOCAL_DEVELOPMENT_MATCH_CACHE_PATH = path.join(process.cwd(), 'latest.json');
 const LOCAL_MATCH_CACHE_PATH = path.join(process.cwd(), 'data', 'worldcup-matches.local.json');
+const WORLD_CUP_MATCH_CACHE_TAG = 'world-cup-match-cache';
+const WORLD_CUP_MATCH_CACHE_REVALIDATE_SECONDS = 24 * 60 * 60;
 
 export const WORLD_CUP_CACHE_BLOB_PATH =
   process.env.WORLD_CUP_CACHE_BLOB_PATH ?? 'worldcup/matches/latest.json';
@@ -77,7 +80,7 @@ interface FootballDataScore {
 }
 
 export async function getWorldCupMatchCache(): Promise<WorldCupMatchCache | null> {
-  const cached = await readBlobWorldCupMatchCache();
+  const cached = await readCachedBlobWorldCupMatchCache();
 
   if (cached) {
     return cached;
@@ -104,6 +107,7 @@ export async function syncWorldCupMatches(): Promise<WorldCupMatchCache> {
   };
 
   await writeBlobWorldCupMatchCache(cache);
+  revalidateTag(WORLD_CUP_MATCH_CACHE_TAG);
 
   return cache;
 }
@@ -136,6 +140,15 @@ async function fetchWorldCupMatchesFromApi(): Promise<WorldCupMatch[]> {
     .filter((match): match is WorldCupMatch => Boolean(match))
     .sort(compareWorldCupMatches);
 }
+
+const readCachedBlobWorldCupMatchCache = unstable_cache(
+  readBlobWorldCupMatchCache,
+  [WORLD_CUP_MATCH_CACHE_TAG],
+  {
+    revalidate: WORLD_CUP_MATCH_CACHE_REVALIDATE_SECONDS,
+    tags: [WORLD_CUP_MATCH_CACHE_TAG],
+  },
+);
 
 async function readBlobWorldCupMatchCache(): Promise<WorldCupMatchCache | null> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;

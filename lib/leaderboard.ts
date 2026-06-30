@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { list } from '@vercel/blob';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { parse } from 'csv-parse/sync';
@@ -12,6 +13,8 @@ import {
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const CSV_DATE_PATTERN = /(\d{4})_(\d{2})_(\d{2})/;
+const LEADERBOARD_BLOB_SNAPSHOT_CACHE_TAG = 'leaderboard-blob-snapshots';
+const LEADERBOARD_BLOB_SNAPSHOT_CACHE_REVALIDATE_SECONDS = 24 * 60 * 60;
 const PLAYER_PENALTIES: Record<string, number> = {
   riky: 180,
 };
@@ -72,7 +75,7 @@ export function formatDate(date: Date): string {
 export async function getLeaderboardData(): Promise<LeaderboardData> {
   const [localSources, blobSources] = await Promise.all([
     getLocalSnapshotSources(),
-    getBlobSnapshotSources(),
+    getCachedBlobSnapshotSources(),
   ]);
 
   const sourcesByFileName = new Map<string, SnapshotSource>();
@@ -99,6 +102,10 @@ export async function getLeaderboardData(): Promise<LeaderboardData> {
   return { snapshots, latest };
 }
 
+export function revalidateLeaderboardBlobSnapshots(): void {
+  revalidateTag(LEADERBOARD_BLOB_SNAPSHOT_CACHE_TAG);
+}
+
 async function getLocalSnapshotSources(): Promise<SnapshotSource[]> {
   const fileNames = (await readdir(DATA_DIR))
     .filter((fileName) => isResultFileName(fileName))
@@ -117,6 +124,15 @@ async function getLocalSnapshotSources(): Promise<SnapshotSource[]> {
     }),
   );
 }
+
+const getCachedBlobSnapshotSources = unstable_cache(
+  getBlobSnapshotSources,
+  [LEADERBOARD_BLOB_SNAPSHOT_CACHE_TAG],
+  {
+    revalidate: LEADERBOARD_BLOB_SNAPSHOT_CACHE_REVALIDATE_SECONDS,
+    tags: [LEADERBOARD_BLOB_SNAPSHOT_CACHE_TAG],
+  },
+);
 
 async function getBlobSnapshotSources(): Promise<SnapshotSource[]> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;

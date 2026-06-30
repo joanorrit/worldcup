@@ -2,6 +2,7 @@ import { Leaderboard, type LeaderboardSnapshotView } from '@/components/Leaderbo
 import { MatchdaySection } from '@/components/MatchdaySection';
 import { formatDate, getLeaderboardData } from '@/lib/leaderboard';
 import { getHomepageMatchdays } from '@/lib/matchday-predictions';
+import { scheduleWorldCupSyncIfNeeded } from '@/lib/world-cup-sync-trigger';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,6 +13,8 @@ export default async function Home() {
     getHomepageMatchdays(),
   ]);
   const { snapshots, latest } = leaderboardData;
+
+  scheduleWorldCupSyncIfNeeded(matchdayData);
 
   if (!latest) {
     return <EmptyState />;

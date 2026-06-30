@@ -9,6 +9,7 @@ import {
   RESULTS_BLOB_PREFIX,
   validateResultCsvContent,
 } from '@/lib/result-files';
+import { revalidateLeaderboardBlobSnapshots } from '@/lib/leaderboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,6 +126,7 @@ async function uploadResultCsv(formData: FormData) {
     redirect(`/admin/upload?error=${encodeURIComponent(result.message ?? 'Upload failed.')}`);
   }
 
+  revalidateLeaderboardBlobSnapshots();
   revalidatePath('/');
   redirect(`/admin/upload?uploaded=${encodeURIComponent(result.fileName ?? '')}`);
 }
