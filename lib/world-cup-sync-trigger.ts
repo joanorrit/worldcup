@@ -9,7 +9,7 @@ const DEFAULT_SYNC_MIN_AGE_HOURS = 3;
 const DEFAULT_LIVE_SYNC_MIN_AGE_MINUTES = 30;
 const DEFAULT_AFTER_MATCH_BUFFER_MINUTES = 120;
 
-export function scheduleWorldCupSyncIfNeeded(data: HomepageMatchdayData): boolean {
+export function scheduleWorldCupSyncIfNeeded(data: HomepageMatchdayData, pathToRevalidate = '/'): boolean {
   if (!shouldSyncWorldCupMatches(data)) {
     return false;
   }
@@ -17,7 +17,7 @@ export function scheduleWorldCupSyncIfNeeded(data: HomepageMatchdayData): boolea
   waitUntil(
     syncWorldCupMatches()
       .then(() => {
-        revalidatePath('/');
+        revalidatePath(pathToRevalidate);
       })
       .catch((error) => {
         console.error('Could not sync World Cup fixtures from homepage trigger.', error);

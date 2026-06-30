@@ -3,8 +3,12 @@ import 'server-only';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parse } from 'csv-parse/sync';
+import {
+  DEFAULT_PREDICTION_GROUP_ID,
+  getPredictionGroup,
+  type PredictionGroupId,
+} from '@/lib/prediction-groups';
 
-const BETS_DIR = path.join(process.cwd(), 'data', 'bets');
 const DATE_PATTERN = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
 const GROUP_LABEL_PATTERN = /^Grupo ([A-L])$/;
 
@@ -72,8 +76,12 @@ export interface PlayerBets {
   honorRoll: HonorRollItem[];
 }
 
-export async function getPlayerBets(player: string): Promise<PlayerBets | null> {
-  const filePath = path.join(BETS_DIR, `${player}.csv`);
+export async function getPlayerBets(
+  player: string,
+  groupId: PredictionGroupId = DEFAULT_PREDICTION_GROUP_ID,
+): Promise<PlayerBets | null> {
+  const group = getPredictionGroup(groupId);
+  const filePath = path.join(group.localBetsDir, `${player}.csv`);
   let content: string;
 
   try {

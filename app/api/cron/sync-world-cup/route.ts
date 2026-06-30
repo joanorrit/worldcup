@@ -5,6 +5,8 @@ import { syncWorldCupMatches } from '@/lib/world-cup-matches';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const REVALIDATE_PATHS = ['/', '/group2'];
+
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ ok: false, message: 'Unauthorized.' }, { status: 401 });
@@ -12,13 +14,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const cache = await syncWorldCupMatches();
-    revalidatePath('/');
+    for (const path of REVALIDATE_PATHS) {
+      revalidatePath(path);
+    }
 
     return NextResponse.json({
       ok: true,
       generatedAt: cache.generatedAt,
       matches: cache.matches.length,
       path: process.env.WORLD_CUP_CACHE_BLOB_PATH ?? 'worldcup/matches/latest.json',
+      revalidatedPaths: REVALIDATE_PATHS,
       source: cache.source,
     });
   } catch (error) {

@@ -15,6 +15,7 @@ export interface LeaderboardSnapshotView {
 
 interface LeaderboardProps {
   snapshots: LeaderboardSnapshotView[];
+  basePath?: string;
   initialIndex?: number;
 }
 
@@ -26,7 +27,7 @@ const podiumLogos = [
   { rank: 3, src: '/logos/bronze.png', alt: 'Bronze trophy' },
 ];
 
-export function Leaderboard({ snapshots, initialIndex }: LeaderboardProps) {
+export function Leaderboard({ snapshots, basePath = '', initialIndex }: LeaderboardProps) {
   const latestIndex = Math.max(snapshots.length - 1, 0);
   const safeInitialIndex = initialIndex ?? latestIndex;
   const [currentIndex, setCurrentIndex] = useState(() => clampIndex(safeInitialIndex, snapshots.length));
@@ -77,9 +78,9 @@ export function Leaderboard({ snapshots, initialIndex }: LeaderboardProps) {
         dateLabel={snapshot.dateLabel}
       />
 
-      <PodiumLeaders standings={latestLeaders} />
+      <PodiumLeaders standings={latestLeaders} basePath={basePath} />
 
-      <PlayerRowList standings={snapshot.standings} />
+      <PlayerRowList standings={snapshot.standings} basePath={basePath} />
     </section>
   );
 }
@@ -123,11 +124,11 @@ function LeaderboardHeader({
   );
 }
 
-function PodiumLeaders({ standings }: { standings: Standing[] }) {
+function PodiumLeaders({ standings, basePath }: { standings: Standing[]; basePath: string }) {
   return (
     <div className="leaderboard-podium grid border-b border-[#8B847D40] bg-[#EBE7E4]/45 text-left sm:grid-cols-3">
       {standings.map((standing, index) => (
-        <PodiumLeader key={standing.player} standing={standing} logo={podiumLogos[index]} />
+        <PodiumLeader key={standing.player} standing={standing} logo={podiumLogos[index]} basePath={basePath} />
       ))}
     </div>
   );
@@ -136,9 +137,11 @@ function PodiumLeaders({ standings }: { standings: Standing[] }) {
 function PodiumLeader({
   standing,
   logo,
+  basePath,
 }: {
   standing: Standing;
   logo: { rank: number; src: string; alt: string };
+  basePath: string;
 }) {
   return (
     <article className="leaderboard-podium-card grid grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-3 border-b border-[#8B847D40] px-4 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:last:border-r-0">
@@ -150,7 +153,7 @@ function PodiumLeader({
         <div className="flex items-baseline gap-2">
           <p className="font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">#{standing.rank}</p>
           <h2 className="min-w-0 truncate text-base font-semibold leading-tight">
-            <Link href={getPlayerPath(standing.player)} className="truncate text-[#252F3D] transition-colors hover:text-[#4B607C]">
+            <Link href={getPlayerPath(standing.player, basePath)} className="truncate text-[#252F3D] transition-colors hover:text-[#4B607C]">
               {standing.player}
             </Link>
           </h2>
@@ -176,7 +179,7 @@ function PodiumMetric({ label, value, penalty = 0 }: { label: string; value: str
   );
 }
 
-function PlayerRowList({ standings }: { standings: Standing[] }) {
+function PlayerRowList({ standings, basePath }: { standings: Standing[]; basePath: string }) {
   const hasExpandedMetrics = standings.some(hasExpandedScoreMetrics);
   const tableGridClass = hasExpandedMetrics
     ? 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem]'
@@ -213,7 +216,7 @@ function PlayerRowList({ standings }: { standings: Standing[] }) {
 
         <div className="divide-y divide-[#8B847D2E]">
           {standings.map((standing) => (
-            <PlayerRow key={standing.player} hasExpandedMetrics={hasExpandedMetrics} standing={standing} tableGridClass={tableGridClass} />
+            <PlayerRow key={standing.player} basePath={basePath} hasExpandedMetrics={hasExpandedMetrics} standing={standing} tableGridClass={tableGridClass} />
           ))}
         </div>
       </div>
@@ -222,10 +225,12 @@ function PlayerRowList({ standings }: { standings: Standing[] }) {
 }
 
 function PlayerRow({
+  basePath,
   hasExpandedMetrics,
   standing,
   tableGridClass,
 }: {
+  basePath: string;
   hasExpandedMetrics: boolean;
   standing: Standing;
   tableGridClass: string;
@@ -240,7 +245,7 @@ function PlayerRow({
       </div>
 
       <h2 className="leaderboard-player-name truncate pr-3 text-base font-medium leading-tight">
-        <Link href={getPlayerPath(standing.player)} className="truncate text-[#252F3D] transition-colors hover:text-[#4B607C]">
+        <Link href={getPlayerPath(standing.player, basePath)} className="truncate text-[#252F3D] transition-colors hover:text-[#4B607C]">
           {standing.player}
         </Link>
       </h2>
@@ -356,8 +361,10 @@ function clampIndex(index: number, length: number) {
   return Math.min(Math.max(index, 0), length - 1);
 }
 
-function getPlayerPath(player: string) {
-  return `/${encodeURIComponent(player.toLowerCase())}`;
+function getPlayerPath(player: string, basePath: string) {
+  const normalizedBasePath = basePath === '/' ? '' : basePath.replace(/\/$/, '');
+
+  return `${normalizedBasePath}/${encodeURIComponent(player.toLowerCase())}`;
 }
 
 function formatNumber(value: number) {

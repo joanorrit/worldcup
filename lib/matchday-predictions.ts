@@ -4,6 +4,11 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { cache } from 'react';
 import { getPlayerBets, type PlayerBetMatch } from '@/lib/player-bets';
+import {
+  DEFAULT_PREDICTION_GROUP_ID,
+  getPredictionGroup,
+  type PredictionGroupId,
+} from '@/lib/prediction-groups';
 import type {
   HomepageMatchdayData,
   MatchdayGuess,
@@ -12,7 +17,6 @@ import type {
 } from '@/lib/matchday-types';
 import { getWorldCupMatchCache, WORLD_CUP_TIME_ZONE, type WorldCupMatch } from '@/lib/world-cup-matches';
 
-const BETS_DIR = path.join(process.cwd(), 'data', 'bets');
 const BET_FILE_PATTERN = /^[a-z0-9_-]+\.csv$/i;
 const TBD_TEAM_PATTERN = /^(tbd|to be determined|winner\b|runner-up\b|runner up\b|w\d+|l\d+)$/i;
 
@@ -33,10 +37,12 @@ interface KnockoutMatchIndex {
   matchesByTeamPair: Map<string, WorldCupMatch>;
 }
 
-export const getHomepageMatchdays = cache(async (): Promise<HomepageMatchdayData> => {
+export const getHomepageMatchdays = cache(async (
+  groupId: PredictionGroupId = DEFAULT_PREDICTION_GROUP_ID,
+): Promise<HomepageMatchdayData> => {
   const cacheData = await getWorldCupMatchCache();
   const matches = cacheData?.matches ?? [];
-  const predictionIndexes = await getPredictionIndexes();
+  const predictionIndexes = await getPredictionIndexes(groupId);
   const knockoutMatchIndex = getKnockoutMatchIndex(matches);
   const occurrenceCounts = new Map<string, number>();
 
@@ -77,11 +83,11 @@ export const getHomepageMatchdays = cache(async (): Promise<HomepageMatchdayData
   };
 });
 
-async function getPredictionIndexes(): Promise<PredictionIndexes> {
-  const playerSlugs = await getPlayerSlugs();
+async function getPredictionIndexes(groupId: PredictionGroupId): Promise<PredictionIndexes> {
+  const playerSlugs = await getPlayerSlugs(groupId);
   const playerBets = await Promise.all(
     playerSlugs.map(async (slug) => ({
-      bets: await getPlayerBets(slug),
+      bets: await getPlayerBets(slug, groupId),
       player: formatPlayerName(slug),
     })),
   );
@@ -141,9 +147,11 @@ async function getPredictionIndexes(): Promise<PredictionIndexes> {
   return { exactGuesses, playerSets };
 }
 
-async function getPlayerSlugs(): Promise<string[]> {
+async function getPlayerSlugs(groupId: PredictionGroupId): Promise<string[]> {
+  const group = getPredictionGroup(groupId);
+
   try {
-    const fileNames = await readdir(BETS_DIR);
+    const fileNames = await readdir(group.localBetsDir);
 
     return fileNames
       .filter((fileName) => BET_FILE_PATTERN.test(fileName))

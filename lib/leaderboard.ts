@@ -8,12 +8,17 @@ import { parse } from 'csv-parse/sync';
 import {
   getSafeResultFileName,
   isResultFileName,
-  RESULTS_BLOB_PREFIX,
 } from '@/lib/result-files';
+import {
+  DEFAULT_PREDICTION_GROUP_ID,
+  getLeaderboardBlobSnapshotCacheTag,
+  getPredictionGroup,
+  GROUP2_PREDICTION_GROUP_ID,
+  type PredictionGroupConfig,
+  type PredictionGroupId,
+} from '@/lib/prediction-groups';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
 const CSV_DATE_PATTERN = /(\d{4})_(\d{2})_(\d{2})/;
-const LEADERBOARD_BLOB_SNAPSHOT_CACHE_TAG = 'leaderboard-blob-snapshots';
 const LEADERBOARD_BLOB_SNAPSHOT_CACHE_REVALIDATE_SECONDS = 24 * 60 * 60;
 const PLAYER_PENALTIES: Record<string, number> = {
   riky: 180,
@@ -72,10 +77,13 @@ export function formatDate(date: Date): string {
   }).format(date);
 }
 
-export async function getLeaderboardData(): Promise<LeaderboardData> {
+export async function getLeaderboardData(
+  groupId: PredictionGroupId = DEFAULT_PREDICTION_GROUP_ID,
+): Promise<LeaderboardData> {
+  const group = getPredictionGroup(groupId);
   const [localSources, blobSources] = await Promise.all([
-    getLocalSnapshotSources(),
-    getCachedBlobSnapshotSources(),
+    getLocalSnapshotSources(group),
+    getCachedBlobSnapshotSources(group.id),
   ]);
 
   const sourcesByFileName = new Map<string, SnapshotSource>();
@@ -102,18 +110,28 @@ export async function getLeaderboardData(): Promise<LeaderboardData> {
   return { snapshots, latest };
 }
 
-export function revalidateLeaderboardBlobSnapshots(): void {
-  revalidateTag(LEADERBOARD_BLOB_SNAPSHOT_CACHE_TAG);
+export function revalidateLeaderboardBlobSnapshots(groupId: PredictionGroupId = DEFAULT_PREDICTION_GROUP_ID): void {
+  revalidateTag(getLeaderboardBlobSnapshotCacheTag(groupId));
 }
 
-async function getLocalSnapshotSources(): Promise<SnapshotSource[]> {
-  const fileNames = (await readdir(DATA_DIR))
-    .filter((fileName) => isResultFileName(fileName))
-    .sort();
+async function getLocalSnapshotSources(group: PredictionGroupConfig): Promise<SnapshotSource[]> {
+  let fileNames: string[];
+
+  try {
+    fileNames = (await readdir(group.localResultsDir))
+      .filter((fileName) => isResultFileName(fileName))
+      .sort();
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
 
   return Promise.all(
     fileNames.map(async (fileName) => {
-      const filePath = path.join(DATA_DIR, fileName);
+      const filePath = path.join(group.localResultsDir, fileName);
       const [content, fileStat] = await Promise.all([readFile(filePath, 'utf8'), stat(filePath)]);
 
       return {
@@ -125,16 +143,33 @@ async function getLocalSnapshotSources(): Promise<SnapshotSource[]> {
   );
 }
 
-const getCachedBlobSnapshotSources = unstable_cache(
-  getBlobSnapshotSources,
-  [LEADERBOARD_BLOB_SNAPSHOT_CACHE_TAG],
+const getCachedDefaultBlobSnapshotSources = unstable_cache(
+  () => getBlobSnapshotSources(getPredictionGroup(DEFAULT_PREDICTION_GROUP_ID)),
+  [getLeaderboardBlobSnapshotCacheTag(DEFAULT_PREDICTION_GROUP_ID)],
   {
     revalidate: LEADERBOARD_BLOB_SNAPSHOT_CACHE_REVALIDATE_SECONDS,
-    tags: [LEADERBOARD_BLOB_SNAPSHOT_CACHE_TAG],
+    tags: [getLeaderboardBlobSnapshotCacheTag(DEFAULT_PREDICTION_GROUP_ID)],
   },
 );
 
-async function getBlobSnapshotSources(): Promise<SnapshotSource[]> {
+const getCachedGroup2BlobSnapshotSources = unstable_cache(
+  () => getBlobSnapshotSources(getPredictionGroup(GROUP2_PREDICTION_GROUP_ID)),
+  [getLeaderboardBlobSnapshotCacheTag(GROUP2_PREDICTION_GROUP_ID)],
+  {
+    revalidate: LEADERBOARD_BLOB_SNAPSHOT_CACHE_REVALIDATE_SECONDS,
+    tags: [getLeaderboardBlobSnapshotCacheTag(GROUP2_PREDICTION_GROUP_ID)],
+  },
+);
+
+function getCachedBlobSnapshotSources(groupId: PredictionGroupId): Promise<SnapshotSource[]> {
+  if (groupId === GROUP2_PREDICTION_GROUP_ID) {
+    return getCachedGroup2BlobSnapshotSources();
+  }
+
+  return getCachedDefaultBlobSnapshotSources();
+}
+
+async function getBlobSnapshotSources(group: PredictionGroupConfig): Promise<SnapshotSource[]> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
 
   if (!token) {
@@ -148,7 +183,7 @@ async function getBlobSnapshotSources(): Promise<SnapshotSource[]> {
     do {
       const page = await list({
         cursor,
-        prefix: RESULTS_BLOB_PREFIX,
+        prefix: group.resultsBlobPrefix,
         token,
       });
 
@@ -185,7 +220,7 @@ async function getBlobSnapshotSources(): Promise<SnapshotSource[]> {
 
     return sources;
   } catch (error) {
-    console.error('Could not read Vercel Blob result CSVs.', error);
+    console.error(`Could not read Vercel Blob result CSVs for ${group.id}.`, error);
     return [];
   }
 }
@@ -328,4 +363,8 @@ function getDate(fileName: string, fallback: Date): Date {
   }
 
   return new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00Z`);
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
