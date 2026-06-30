@@ -264,7 +264,7 @@ function MatchRow({
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_4.75rem_auto] sm:items-center sm:px-5">
         <div className="col-span-2 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 sm:col-span-1">
           <p className="min-w-0 text-sm font-medium leading-[1.35] text-[#252F3D]">
-            {getMatchSummary(match)}
+            <MatchSummary match={match} />
           </p>
           <span className="font-mono text-[0.62rem] uppercase leading-none tracking-[0.08em] text-[#5C5752]">
             {getStageLabel(match)}
@@ -325,7 +325,7 @@ function GuessList({
                   />
                 ) : null}
                 <span className={`max-w-full min-w-0 truncate border px-2 py-1 text-right font-mono text-[0.78rem] leading-none tabular-nums ${tone.detailClassName}`}>
-                  {formatGuess(guess)}
+                  <GuessSummary guess={guess} />
                 </span>
               </span>
             </div>
@@ -383,12 +383,21 @@ function getSafeInitialDateKey(data: HomepageMatchdayData): string {
   return data.initialDateKey ?? data.matchdays[0]?.dateKey ?? '';
 }
 
-function getMatchSummary(match: MatchdayMatch): string {
+function MatchSummary({ match }: { match: MatchdayMatch }) {
   if (hasVisibleScore(match)) {
-    return `${match.homeTeam} ${match.homeGoals}-${match.awayGoals} ${match.awayTeam}`;
+    return (
+      <ScoreSummary
+        awayGoals={match.awayGoals}
+        awayPenaltyGoals={match.awayPenaltyGoals}
+        awayTeam={match.awayTeam}
+        homeGoals={match.homeGoals}
+        homePenaltyGoals={match.homePenaltyGoals}
+        homeTeam={match.homeTeam}
+      />
+    );
   }
 
-  return `${match.homeTeam} vs ${match.awayTeam}`;
+  return <>{match.homeTeam} vs {match.awayTeam}</>;
 }
 
 function getStatusLabel(match: MatchdayMatch): string {
@@ -484,8 +493,65 @@ function getGuessTone(guess: MatchdayGuess, accessibleColors: boolean) {
   };
 }
 
-function formatGuess(guess: MatchdayGuess): string {
-  return `${guess.homeTeam} ${guess.homeGoals || '-'}-${guess.awayGoals || '-'} ${guess.awayTeam}`;
+function GuessSummary({ guess }: { guess: MatchdayGuess }) {
+  return (
+    <ScoreSummary
+      awayGoals={guess.awayGoals || '-'}
+      awayPenaltyGoals={guess.awayPenaltyGoals}
+      awayTeam={guess.awayTeam}
+      homeGoals={guess.homeGoals || '-'}
+      homePenaltyGoals={guess.homePenaltyGoals}
+      homeTeam={guess.homeTeam}
+    />
+  );
+}
+
+function ScoreSummary({
+  awayGoals,
+  awayPenaltyGoals,
+  awayTeam,
+  homeGoals,
+  homePenaltyGoals,
+  homeTeam,
+}: {
+  awayGoals: number | string | null;
+  awayPenaltyGoals: number | string | null;
+  awayTeam: string;
+  homeGoals: number | string | null;
+  homePenaltyGoals: number | string | null;
+  homeTeam: string;
+}) {
+  return (
+    <>
+      {homeTeam} {formatScoreValue(homeGoals)}-{formatScoreValue(awayGoals)}
+      {hasPenaltyScore(homePenaltyGoals, awayPenaltyGoals) ? (
+        <span className="text-[0.68em] font-medium text-[#5C5752]">
+          {' '}({formatScoreValue(homePenaltyGoals)}-{formatScoreValue(awayPenaltyGoals)})
+        </span>
+      ) : null}
+      {' '}{awayTeam}
+    </>
+  );
+}
+
+function formatScoreValue(value: number | string | null): string {
+  if (typeof value === 'number') {
+    return String(value);
+  }
+
+  return value?.trim() || '-';
+}
+
+function hasPenaltyScore(homePenaltyGoals: number | string | null, awayPenaltyGoals: number | string | null): boolean {
+  return isNumericScore(homePenaltyGoals) && isNumericScore(awayPenaltyGoals);
+}
+
+function isNumericScore(value: number | string | null): boolean {
+  if (typeof value === 'number') {
+    return Number.isFinite(value);
+  }
+
+  return Boolean(value && /^\d+$/.test(value.trim()));
 }
 
 function formatDateKey(

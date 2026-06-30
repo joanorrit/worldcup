@@ -104,11 +104,11 @@ function KnockoutRound({ section }: { section: KnockoutSection }) {
 
 function KnockoutMatchRow({ match }: { match: PlayerBetMatch }) {
   return (
-    <div className="player-match-row player-knockout-match-row grid grid-cols-[3.5rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] items-center px-4 py-2 text-sm transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
+    <div className="player-match-row player-knockout-match-row grid grid-cols-[3.5rem_minmax(8rem,1fr)_6.25rem_minmax(8rem,1fr)] items-center px-4 py-2 text-sm transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
       <span className="player-match-round font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[#5C5752]">#{match.round}</span>
       <span className="player-match-home min-w-0 truncate font-medium text-[#252F3D]">{match.homeTeam}</span>
       <span className="player-match-score text-center font-semibold tabular-nums text-[#252F3D]">
-        {match.homeGoals} - {match.awayGoals}
+        <MatchScore match={match} />
       </span>
       <span className="player-match-away min-w-0 truncate font-medium text-[#252F3D]">{match.awayTeam}</span>
     </div>
@@ -224,7 +224,7 @@ function StandingRow({ standing }: { standing: GroupStanding }) {
 function GroupMatches({ matches }: { matches: PlayerBetMatch[] }) {
   return (
     <div>
-      <div className="player-match-head grid grid-cols-[3rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] px-4 py-2 text-left font-mono text-[0.58rem] uppercase leading-none tracking-[0.08em] text-[#5C5752] sm:px-5">
+      <div className="player-match-head grid grid-cols-[3rem_minmax(8rem,1fr)_6.25rem_minmax(8rem,1fr)] px-4 py-2 text-left font-mono text-[0.58rem] uppercase leading-none tracking-[0.08em] text-[#5C5752] sm:px-5">
         <span>Rnd</span>
         <span>Home</span>
         <span className="text-center">Score</span>
@@ -242,15 +242,32 @@ function GroupMatches({ matches }: { matches: PlayerBetMatch[] }) {
 
 function MatchRow({ match }: { match: PlayerBetMatch }) {
   return (
-    <div className="player-match-row grid grid-cols-[3rem_minmax(8rem,1fr)_4.5rem_minmax(8rem,1fr)] items-center bg-[#F3F2F0] px-4 py-2 text-sm transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
+    <div className="player-match-row grid grid-cols-[3rem_minmax(8rem,1fr)_6.25rem_minmax(8rem,1fr)] items-center bg-[#F3F2F0] px-4 py-2 text-sm transition-colors hover:bg-[#EBE7E4]/65 sm:px-5">
       <span className="player-match-round font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[#5C5752]">{match.round}</span>
       <span className="player-match-home min-w-0 truncate font-medium text-[#252F3D]">{match.homeTeam}</span>
       <span className="player-match-score text-center font-semibold tabular-nums text-[#252F3D]">
-        {match.homeGoals} - {match.awayGoals}
+        <MatchScore match={match} />
       </span>
       <span className="player-match-away min-w-0 truncate font-medium text-[#252F3D]">{match.awayTeam}</span>
     </div>
   );
+}
+
+function MatchScore({ match }: { match: PlayerBetMatch }) {
+  return (
+    <>
+      {match.homeGoals || '-'}-{match.awayGoals || '-'}
+      {hasPenaltyScore(match) ? (
+        <span className="text-[0.68em] font-medium text-[#5C5752]">
+          {' '}({match.homePenaltyGoals}-{match.awayPenaltyGoals})
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+function hasPenaltyScore(match: PlayerBetMatch): boolean {
+  return /^\d+$/.test(match.homePenaltyGoals.trim()) && /^\d+$/.test(match.awayPenaltyGoals.trim());
 }
 
 function NumberCell({ label, value }: { label: string; value: string }) {

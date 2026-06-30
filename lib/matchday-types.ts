@@ -29,6 +29,8 @@ export interface MatchdayMatch {
   awayTeam: string;
   homeGoals: number | null;
   awayGoals: number | null;
+  homePenaltyGoals: number | null;
+  awayPenaltyGoals: number | null;
   guesses: MatchdayGuess[];
 }
 

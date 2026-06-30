@@ -29,6 +29,8 @@ export interface WorldCupMatch {
   awayTeam: string;
   homeGoals: number | null;
   awayGoals: number | null;
+  homePenaltyGoals: number | null;
+  awayPenaltyGoals: number | null;
   winner?: WorldCupWinner | null;
 }
 
@@ -51,10 +53,9 @@ interface FootballDataMatch {
   homeTeam?: FootballDataTeam | null;
   id?: number;
   score?: {
-    fullTime?: {
-      away?: number | null;
-      home?: number | null;
-    } | null;
+    fullTime?: FootballDataScore | null;
+    penalties?: FootballDataScore | null;
+    regularTime?: FootballDataScore | null;
     winner?: string | null;
   } | null;
   stage?: string | null;
@@ -66,6 +67,13 @@ interface FootballDataTeam {
   name?: string | null;
   shortName?: string | null;
   tla?: string | null;
+}
+
+interface FootballDataScore {
+  away?: number | null;
+  awayTeam?: number | null;
+  home?: number | null;
+  homeTeam?: number | null;
 }
 
 export async function getWorldCupMatchCache(): Promise<WorldCupMatchCache | null> {
@@ -218,7 +226,7 @@ function parseWorldCupMatchCache(content: string): WorldCupMatchCache | null {
     return {
       competitionCode: parsed.competitionCode ?? WORLD_CUP_COMPETITION_CODE,
       generatedAt: parsed.generatedAt ?? new Date(0).toISOString(),
-      matches: parsed.matches.filter(isWorldCupMatch).sort(compareWorldCupMatches),
+      matches: parsed.matches.filter(isWorldCupMatch).map(normalizeCachedWorldCupMatch).sort(compareWorldCupMatches),
       season: parsed.season ?? WORLD_CUP_SEASON,
       source: parsed.source ?? 'local',
       timeZone: parsed.timeZone ?? WORLD_CUP_TIME_ZONE,
@@ -226,6 +234,14 @@ function parseWorldCupMatchCache(content: string): WorldCupMatchCache | null {
   } catch {
     return null;
   }
+}
+
+function normalizeCachedWorldCupMatch(match: WorldCupMatch): WorldCupMatch {
+  return {
+    ...match,
+    homePenaltyGoals: getScoreValue(match.homePenaltyGoals),
+    awayPenaltyGoals: getScoreValue(match.awayPenaltyGoals),
+  };
 }
 
 function normalizeFootballDataMatch(match: FootballDataMatch): WorldCupMatch | null {
@@ -240,6 +256,7 @@ function normalizeFootballDataMatch(match: FootballDataMatch): WorldCupMatch | n
   }
 
   const status = match.status ?? 'SCHEDULED';
+  const score = getMatchScore(match.score);
 
   return {
     id: String(match.id),
@@ -252,10 +269,24 @@ function normalizeFootballDataMatch(match: FootballDataMatch): WorldCupMatch | n
     group: match.group ?? null,
     homeTeam: getTeamName(match.homeTeam, 'TBD'),
     awayTeam: getTeamName(match.awayTeam, 'TBD'),
-    homeGoals: getScoreValue(match.score?.fullTime?.home),
-    awayGoals: getScoreValue(match.score?.fullTime?.away),
+    homeGoals: getScoreSideValue(score, 'home'),
+    awayGoals: getScoreSideValue(score, 'away'),
+    homePenaltyGoals: getScoreSideValue(match.score?.penalties, 'home'),
+    awayPenaltyGoals: getScoreSideValue(match.score?.penalties, 'away'),
     winner: getWinnerValue(match.score?.winner),
   };
+}
+
+function getMatchScore(score: FootballDataMatch['score']) {
+  if (hasCompleteScore(score?.regularTime)) {
+    return score?.regularTime;
+  }
+
+  return score?.fullTime ?? null;
+}
+
+function hasCompleteScore(score: FootballDataScore | null | undefined): boolean {
+  return getScoreSideValue(score, 'home') !== null && getScoreSideValue(score, 'away') !== null;
 }
 
 function getTeamName(team: FootballDataTeam | null | undefined, fallback: string): string {
@@ -264,6 +295,16 @@ function getTeamName(team: FootballDataTeam | null | undefined, fallback: string
 
 function getScoreValue(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function getScoreSideValue(score: FootballDataScore | null | undefined, side: 'home' | 'away'): number | null {
+  if (!score) {
+    return null;
+  }
+
+  return side === 'home'
+    ? getScoreValue(score.home ?? score.homeTeam)
+    : getScoreValue(score.away ?? score.awayTeam);
 }
 
 function getWinnerValue(value: string | null | undefined): WorldCupWinner | null {
