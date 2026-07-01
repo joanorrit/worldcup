@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type {
   HomepageMatchdayData,
@@ -11,10 +12,11 @@ import type {
 } from '@/lib/matchday-types';
 
 interface MatchdaySectionProps {
+  basePath?: string;
   data: HomepageMatchdayData;
 }
 
-export function MatchdaySection({ data }: MatchdaySectionProps) {
+export function MatchdaySection({ basePath = '', data }: MatchdaySectionProps) {
   const initialDateKey = getSafeInitialDateKey(data);
   const [selectedDateKey, setSelectedDateKey] = useState(initialDateKey);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
@@ -136,6 +138,7 @@ export function MatchdaySection({ data }: MatchdaySectionProps) {
               <MatchRow
                 key={match.id}
                 accessibleGuessColors={useAccessibleGuessColors}
+                basePath={basePath}
                 expanded={expandedMatchId === match.id}
                 match={match}
                 onToggle={() => setExpandedMatchId((current) => (current === match.id ? null : match.id))}
@@ -251,11 +254,13 @@ function GuessColorButton({
 
 function MatchRow({
   accessibleGuessColors,
+  basePath,
   expanded,
   match,
   onToggle,
 }: {
   accessibleGuessColors: boolean;
+  basePath: string;
   expanded: boolean;
   match: MatchdayMatch;
   onToggle: () => void;
@@ -265,7 +270,7 @@ function MatchRow({
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_4.75rem_auto] sm:items-center sm:px-5">
         <div className="col-span-2 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 sm:col-span-1">
           <p className="min-w-0 text-sm font-medium leading-[1.35] text-[#252F3D]">
-            <MatchSummary match={match} />
+            <MatchSummary basePath={basePath} match={match} />
           </p>
           <span className="font-mono text-[0.62rem] uppercase leading-none tracking-[0.08em] text-[#5C5752]">
             {getStageLabel(match)}
@@ -332,9 +337,9 @@ function GuessList({
   );
 }
 
-function TeamLabel({ meta, showName = false }: { meta: MatchdayTeamMeta; showName?: boolean }) {
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1.5" title={meta.team}>
+function TeamLabel({ href, meta, showName = false }: { href?: string | null; meta: MatchdayTeamMeta; showName?: boolean }) {
+  const content = (
+    <>
       <TeamFlag meta={meta} />
       <span
         className={
@@ -345,6 +350,24 @@ function TeamLabel({ meta, showName = false }: { meta: MatchdayTeamMeta; showNam
       >
         {showName ? meta.team : meta.code}
       </span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="inline-flex min-w-0 items-center gap-1.5 border-b border-[#4B607C40] text-[#252F3D] transition-colors hover:border-[#4B607C] hover:text-[#4B607C]"
+        title={`View ${meta.team} knockout guesses`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5" title={meta.team}>
+      {content}
     </span>
   );
 }
@@ -441,16 +464,21 @@ function getSafeInitialDateKey(data: HomepageMatchdayData): string {
   return data.initialDateKey ?? data.matchdays[0]?.dateKey ?? '';
 }
 
-function MatchSummary({ match }: { match: MatchdayMatch }) {
+function MatchSummary({ basePath, match }: { basePath: string; match: MatchdayMatch }) {
+  const homeTeamHref = getKnockoutTeamHref(basePath, match, match.homeTeam);
+  const awayTeamHref = getKnockoutTeamHref(basePath, match, match.awayTeam);
+
   if (hasVisibleScore(match)) {
     return (
       <ScoreSummary
         awayGoals={match.awayGoals}
         awayPenaltyGoals={match.awayPenaltyGoals}
         awayTeamMeta={match.awayTeamMeta}
+        awayTeamHref={awayTeamHref}
         homeGoals={match.homeGoals}
         homePenaltyGoals={match.homePenaltyGoals}
         homeTeamMeta={match.homeTeamMeta}
+        homeTeamHref={homeTeamHref}
         showTeamNames
       />
     );
@@ -458,9 +486,9 @@ function MatchSummary({ match }: { match: MatchdayMatch }) {
 
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      <TeamLabel meta={match.homeTeamMeta} showName />
+      <TeamLabel href={homeTeamHref} meta={match.homeTeamMeta} showName />
       <span className="font-mono text-[0.72rem] uppercase text-[#5C5752]">vs</span>
-      <TeamLabel meta={match.awayTeamMeta} showName />
+      <TeamLabel href={awayTeamHref} meta={match.awayTeamMeta} showName />
     </span>
   );
 }
@@ -583,22 +611,26 @@ function ScoreSummary({
   awayGoals,
   awayPenaltyGoals,
   awayTeamMeta,
+  awayTeamHref,
   homeGoals,
   homePenaltyGoals,
   homeTeamMeta,
+  homeTeamHref,
   showTeamNames = false,
 }: {
   awayGoals: number | string | null;
   awayPenaltyGoals: number | string | null;
   awayTeamMeta: MatchdayTeamMeta;
+  awayTeamHref?: string | null;
   homeGoals: number | string | null;
   homePenaltyGoals: number | string | null;
   homeTeamMeta: MatchdayTeamMeta;
+  homeTeamHref?: string | null;
   showTeamNames?: boolean;
 }) {
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
-      <TeamLabel meta={homeTeamMeta} showName={showTeamNames} />
+      <TeamLabel href={homeTeamHref} meta={homeTeamMeta} showName={showTeamNames} />
       <span className="inline-flex shrink-0 items-baseline gap-1">
         <span>{formatScoreValue(homeGoals)}-{formatScoreValue(awayGoals)}</span>
         {hasPenaltyScore(homePenaltyGoals, awayPenaltyGoals) ? (
@@ -607,7 +639,7 @@ function ScoreSummary({
           </span>
         ) : null}
       </span>
-      <TeamLabel meta={awayTeamMeta} showName={showTeamNames} />
+      <TeamLabel href={awayTeamHref} meta={awayTeamMeta} showName={showTeamNames} />
     </span>
   );
 }
@@ -630,6 +662,32 @@ function isNumericScore(value: number | string | null): boolean {
   }
 
   return Boolean(value && /^\d+$/.test(value.trim()));
+}
+
+function getKnockoutTeamHref(basePath: string, match: MatchdayMatch, team: string): string | null {
+  if (match.stage === 'GROUP_STAGE' || isPlaceholderTeam(team)) {
+    return null;
+  }
+
+  const normalizedBasePath = basePath === '/' ? '' : basePath.replace(/\/$/, '');
+
+  return `${normalizedBasePath}/knockout/${match.stage.toLowerCase().replace(/_/g, '-')}/${encodeURIComponent(match.id)}/${getRawTeamSlug(team)}`;
+}
+
+function getRawTeamSlug(team: string): string {
+  return team
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .replace(/-+/g, '-');
+}
+
+function isPlaceholderTeam(team: string): boolean {
+  return /^(tbd|to be determined|winner\b|runner-up\b|runner up\b|w\d+|l\d+)$/i.test(team.trim());
 }
 
 function formatDateKey(

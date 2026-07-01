@@ -44,7 +44,7 @@ export async function HomePageContent({ group }: HomePageContentProps) {
           </p>
         </header>
 
-        <MatchdaySection data={matchdayData} />
+        <MatchdaySection basePath={group.routePrefix} data={matchdayData} />
 
         <section className="mx-auto w-full max-w-[72rem] text-left">
           <h2 className="mb-3 font-mono text-[0.72rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">

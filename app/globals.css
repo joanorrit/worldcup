@@ -46,19 +46,22 @@ textarea {
   }
 
   .home-page-container,
-  .player-page-container {
+  .player-page-container,
+  .knockout-page-container {
     padding: 0.75rem 0.75rem 2rem;
   }
 
   .home-page-header,
-  .player-page-header {
+  .player-page-header,
+  .knockout-page-header {
     align-items: flex-start;
     padding-block: 0.75rem 1rem;
     text-align: left;
   }
 
   .home-page-header h1,
-  .player-page-header h1 {
+  .player-page-header h1,
+  .knockout-page-header h1 {
     font-size: clamp(2.25rem, 15vw, 3rem);
     letter-spacing: 0;
   }
@@ -202,6 +205,53 @@ textarea {
   .player-standings-head,
   .player-match-head {
     display: none;
+  }
+
+  .knockout-team-head {
+    display: none;
+  }
+
+  .knockout-team-row {
+    grid-template-areas:
+      "player score"
+      "slot status"
+      "prediction prediction";
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0.75rem;
+    row-gap: 0.45rem;
+  }
+
+  .knockout-team-player {
+    grid-area: player;
+  }
+
+  .knockout-team-slot {
+    grid-area: slot;
+    overflow-wrap: anywhere;
+  }
+
+  .knockout-team-prediction {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0;
+    grid-area: prediction;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .knockout-team-row-empty .knockout-team-prediction {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .knockout-team-score {
+    grid-area: score;
+    white-space: nowrap;
+  }
+
+  .knockout-team-status {
+    grid-area: status;
+    justify-content: flex-end;
   }
 
   .player-standing-row {
