@@ -107,9 +107,12 @@ export async function syncWorldCupMatches(): Promise<WorldCupMatchCache> {
   };
 
   await writeBlobWorldCupMatchCache(cache);
-  revalidateTag(WORLD_CUP_MATCH_CACHE_TAG);
 
   return cache;
+}
+
+export function revalidateWorldCupMatchCache(): void {
+  revalidateTag(WORLD_CUP_MATCH_CACHE_TAG);
 }
 
 async function fetchWorldCupMatchesFromApi(): Promise<WorldCupMatch[]> {

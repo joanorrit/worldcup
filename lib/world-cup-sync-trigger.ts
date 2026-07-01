@@ -3,7 +3,7 @@ import 'server-only';
 import { waitUntil } from '@vercel/functions';
 import { revalidatePath } from 'next/cache';
 import type { HomepageMatchdayData, MatchdayMatch } from '@/lib/matchday-types';
-import { syncWorldCupMatches } from '@/lib/world-cup-matches';
+import { revalidateWorldCupMatchCache, syncWorldCupMatches } from '@/lib/world-cup-matches';
 
 const DEFAULT_SYNC_MIN_AGE_HOURS = 3;
 const DEFAULT_LIVE_SYNC_MIN_AGE_MINUTES = 30;
@@ -17,6 +17,7 @@ export function scheduleWorldCupSyncIfNeeded(data: HomepageMatchdayData, pathToR
   waitUntil(
     syncWorldCupMatches()
       .then(() => {
+        revalidateWorldCupMatchCache();
         revalidatePath(pathToRevalidate);
       })
       .catch((error) => {

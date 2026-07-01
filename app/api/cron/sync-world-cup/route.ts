@@ -1,6 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { syncWorldCupMatches } from '@/lib/world-cup-matches';
+import { revalidateWorldCupMatchCache, syncWorldCupMatches } from '@/lib/world-cup-matches';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const cache = await syncWorldCupMatches();
+    revalidateWorldCupMatchCache();
     for (const path of REVALIDATE_PATHS) {
       revalidatePath(path);
     }
