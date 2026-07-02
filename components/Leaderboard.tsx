@@ -10,6 +10,7 @@ export interface LeaderboardSnapshotView {
   dateKey: string;
   dateLabel: string;
   fileName: string;
+  hasRoundOf16Teams: boolean;
   standings: Standing[];
 }
 
@@ -26,6 +27,14 @@ const podiumLogos = [
   { rank: 2, src: '/logos/platinum.png', alt: 'Platinum trophy' },
   { rank: 3, src: '/logos/bronze.png', alt: 'Bronze trophy' },
 ];
+
+const baseTableGridClass = 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem]';
+const expandedTableGridClass = 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem]';
+const roundOf16TableGridClass = 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_7rem]';
+
+const baseTableWidthClass = 'leaderboard-list-inner min-w-[48rem]';
+const expandedTableWidthClass = 'leaderboard-list-inner min-w-[72rem]';
+const roundOf16TableWidthClass = 'leaderboard-list-inner min-w-[79rem]';
 
 export function Leaderboard({ snapshots, basePath = '', initialIndex }: LeaderboardProps) {
   const latestIndex = Math.max(snapshots.length - 1, 0);
@@ -66,7 +75,7 @@ export function Leaderboard({ snapshots, basePath = '', initialIndex }: Leaderbo
   }
 
   return (
-    <section className="leaderboard-shell mx-auto w-full max-w-[72rem] border border-[#8B847D59] bg-[#F4F2F0] text-center shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
+    <section className="leaderboard-shell mx-auto w-full max-w-[80rem] border border-[#8B847D59] bg-[#F4F2F0] text-center shadow-[0_1px_1px_rgba(37,47,61,0.03)]">
       <LeaderboardHeader
         canGoNext={canGoNext}
         canGoPrevious={canGoPrevious}
@@ -80,7 +89,7 @@ export function Leaderboard({ snapshots, basePath = '', initialIndex }: Leaderbo
 
       <PodiumLeaders standings={latestLeaders} basePath={basePath} />
 
-      <PlayerRowList standings={snapshot.standings} basePath={basePath} />
+      <PlayerRowList standings={snapshot.standings} basePath={basePath} hasRoundOf16Teams={snapshot.hasRoundOf16Teams} />
     </section>
   );
 }
@@ -179,15 +188,22 @@ function PodiumMetric({ label, value, penalty = 0 }: { label: string; value: str
   );
 }
 
-function PlayerRowList({ standings, basePath }: { standings: Standing[]; basePath: string }) {
-  const hasExpandedMetrics = standings.some(hasExpandedScoreMetrics);
-  const tableGridClass = hasExpandedMetrics
-    ? 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem]'
-    : 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem]';
+function PlayerRowList({
+  standings,
+  basePath,
+  hasRoundOf16Teams,
+}: {
+  standings: Standing[];
+  basePath: string;
+  hasRoundOf16Teams: boolean;
+}) {
+  const hasExpandedMetrics = hasRoundOf16Teams || standings.some(hasExpandedScoreMetrics);
+  const tableGridClass = hasRoundOf16Teams ? roundOf16TableGridClass : hasExpandedMetrics ? expandedTableGridClass : baseTableGridClass;
+  const tableWidthClass = hasRoundOf16Teams ? roundOf16TableWidthClass : hasExpandedMetrics ? expandedTableWidthClass : baseTableWidthClass;
 
   return (
     <div className="leaderboard-list-scroll w-full overflow-x-auto">
-      <div className={hasExpandedMetrics ? 'leaderboard-list-inner min-w-[72rem]' : 'leaderboard-list-inner min-w-[48rem]'}>
+      <div className={tableWidthClass}>
         {hasExpandedMetrics ? (
           <div className="border-b border-[#8B847D40] bg-[#EBE7E4]/35 px-4 py-2 text-left">
             <span className="inline-flex border border-[#8B847D40] px-2 py-1 font-mono text-[0.58rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">
@@ -210,13 +226,21 @@ function PlayerRowList({ standings, basePath }: { standings: Standing[]; basePat
               <span className="text-center">Posicions</span>
               <span className="text-center">Setzens</span>
               <span className="text-center">Encreuam.</span>
+              {hasRoundOf16Teams ? <span className="text-center">Vuitfinal.</span> : null}
             </>
           ) : null}
         </div>
 
         <div className="divide-y divide-[#8B847D2E]">
           {standings.map((standing) => (
-            <PlayerRow key={standing.player} basePath={basePath} hasExpandedMetrics={hasExpandedMetrics} standing={standing} tableGridClass={tableGridClass} />
+            <PlayerRow
+              key={standing.player}
+              basePath={basePath}
+              hasExpandedMetrics={hasExpandedMetrics}
+              hasRoundOf16Teams={hasRoundOf16Teams}
+              standing={standing}
+              tableGridClass={tableGridClass}
+            />
           ))}
         </div>
       </div>
@@ -227,16 +251,18 @@ function PlayerRowList({ standings, basePath }: { standings: Standing[]; basePat
 function PlayerRow({
   basePath,
   hasExpandedMetrics,
+  hasRoundOf16Teams,
   standing,
   tableGridClass,
 }: {
   basePath: string;
   hasExpandedMetrics: boolean;
+  hasRoundOf16Teams: boolean;
   standing: Standing;
   tableGridClass: string;
 }) {
   const isLeader = standing.rank === 1;
-  const statCount = hasExpandedMetrics ? 6 : 3;
+  const statCount = hasExpandedMetrics ? (hasRoundOf16Teams ? 7 : 6) : 3;
 
   return (
     <article className={`leaderboard-player-row grid ${tableGridClass} items-center bg-[#F3F2F0] px-4 py-2 text-left transition-colors hover:bg-[#EBE7E4]/65`}>
@@ -272,6 +298,7 @@ function PlayerRow({
             <PlayerRowStat label="Posicions" value={standing.positions} />
             <PlayerRowStat label="Setzens" value={standing.roundOf32} />
             <PlayerRowStat label="Encreuam." value={standing.brackets} />
+            {hasRoundOf16Teams ? <PlayerRowStat label="Vuitfinal." value={standing.roundOf16Teams} /> : null}
           </>
         ) : null}
       </div>
@@ -372,5 +399,9 @@ function formatNumber(value: number) {
 }
 
 function hasExpandedScoreMetrics(standing: Standing) {
-  return standing.positions !== undefined || standing.roundOf32 !== undefined || standing.brackets !== undefined;
+  return (
+    standing.positions !== undefined ||
+    standing.roundOf32 !== undefined ||
+    standing.brackets !== undefined
+  );
 }

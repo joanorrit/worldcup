@@ -26,12 +26,13 @@ export async function HomePageContent({ group }: HomePageContentProps) {
     dateKey: snapshot.dateKey,
     dateLabel: formatDate(snapshot.date),
     fileName: snapshot.fileName,
+    hasRoundOf16Teams: snapshot.hasRoundOf16Teams,
     standings: snapshot.standings,
   }));
 
   return (
     <main className="min-h-screen bg-[#EBE7E4] text-[#252F3D]">
-      <div className="home-page-container mx-auto flex w-full max-w-[76rem] flex-col items-center px-4 pb-8 pt-4 text-center sm:px-6 sm:pb-10 sm:pt-6 lg:px-8">
+      <div className="home-page-container mx-auto flex w-full max-w-[82rem] flex-col items-center px-4 pb-8 pt-4 text-center sm:px-6 sm:pb-10 sm:pt-6 lg:px-8">
         <header className="home-page-header mx-auto flex max-w-[48rem] flex-col items-center py-4 sm:py-6">
           <p className="inline-flex border border-[#8B847D59] px-2 py-1 font-mono text-[0.68rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">
             World Cup 2026
@@ -46,7 +47,7 @@ export async function HomePageContent({ group }: HomePageContentProps) {
 
         <MatchdaySection basePath={group.routePrefix} data={matchdayData} />
 
-        <section className="mx-auto w-full max-w-[72rem] text-left">
+        <section className="mx-auto w-full max-w-[80rem] text-left">
           <h2 className="mb-3 font-mono text-[0.72rem] uppercase leading-none tracking-[0.12em] text-[#5C5752]">
             Leaderboard
           </h2>

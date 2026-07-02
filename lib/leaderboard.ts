@@ -38,6 +38,7 @@ export interface RawCsvRow {
   Posicions?: string;
   'Setzens de final'?: string;
   Encreuaments?: string;
+  Vuitfinalistes?: string;
   Punts?: string;
 }
 
@@ -49,6 +50,7 @@ export interface Standing {
   positions?: number;
   roundOf32?: number;
   brackets?: number;
+  roundOf16Teams?: number;
   points: number;
   penalty: number;
   rank: number;
@@ -60,6 +62,7 @@ export interface LeaderboardSnapshot {
   dateKey: string;
   date: Date;
   fileName: string;
+  hasRoundOf16Teams: boolean;
   standings: Standing[];
 }
 
@@ -241,6 +244,7 @@ function readSnapshot(source: SnapshotSource): LeaderboardSnapshot {
     dateKey: getDateKey(source.fileName, source.fallbackDate),
     date: getDate(source.fileName, source.fallbackDate),
     fileName: source.fileName,
+    hasRoundOf16Teams: rows.some(hasRoundOf16TeamsColumn),
     standings: rankStandings(standingsWithoutRanks),
   };
 }
@@ -262,6 +266,7 @@ function normalizeRow(row: RawCsvRow): Omit<Standing, 'rank' | 'rankMovement' | 
     positions: parseOptionalScore(row.Posicions),
     roundOf32: parseOptionalScore(row['Setzens de final']),
     brackets: parseOptionalScore(row.Encreuaments),
+    roundOf16Teams: parseOptionalScore(row.Vuitfinalistes),
     points: parseScore(row.Punts) - penalty,
     penalty,
   };
@@ -339,6 +344,10 @@ function parseOptionalScore(value: string | undefined): number | undefined {
 
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function hasRoundOf16TeamsColumn(row: RawCsvRow): boolean {
+  return Object.prototype.hasOwnProperty.call(row, 'Vuitfinalistes');
 }
 
 function getPlayerPenalty(player: string): number {
