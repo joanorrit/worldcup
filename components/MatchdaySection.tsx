@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useRef, useState, type MouseEventHandler, type ReactNode, type Ref } from 'react';
 import type {
   HomepageMatchdayData,
   MatchdayGuess,
@@ -33,6 +33,22 @@ export function MatchdaySection({ basePath = '', data }: MatchdaySectionProps) {
   const canGoPrevious = selectedIndex > 0;
   const canGoNext = selectedIndex >= 0 && selectedIndex < data.matchdays.length - 1;
   const canGoToday = Boolean(todayMatchday && selectedMatchday?.dateKey !== todayMatchday.dateKey);
+
+  useEffect(() => {
+    const homePath = getHomePath(basePath);
+
+    if (isReloadNavigation()) {
+      clearStoredMatchdayReturn(homePath);
+      return;
+    }
+
+    const storedDateKey = takeStoredMatchdayReturn(homePath, data.matchdays);
+
+    if (storedDateKey) {
+      setSelectedDateKey(storedDateKey);
+      setExpandedMatchId(null);
+    }
+  }, [basePath, data.matchdays]);
 
   useEffect(() => {
     const activeDateChip = activeDateChipRef.current;
@@ -142,6 +158,7 @@ export function MatchdaySection({ basePath = '', data }: MatchdaySectionProps) {
                 expanded={expandedMatchId === match.id}
                 match={match}
                 onToggle={() => setExpandedMatchId((current) => (current === match.id ? null : match.id))}
+                selectedDateKey={selectedDateKey}
               />
             ))}
           </div>
@@ -258,19 +275,21 @@ function MatchRow({
   expanded,
   match,
   onToggle,
+  selectedDateKey,
 }: {
   accessibleGuessColors: boolean;
   basePath: string;
   expanded: boolean;
   match: MatchdayMatch;
   onToggle: () => void;
+  selectedDateKey: string;
 }) {
   return (
     <article className="bg-[#F3F2F0] transition-colors hover:bg-[#EBE7E4]/65">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_4.75rem_auto] sm:items-center sm:px-5">
         <div className="col-span-2 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 sm:col-span-1">
           <p className="min-w-0 text-sm font-medium leading-[1.35] text-[#252F3D]">
-            <MatchSummary basePath={basePath} match={match} />
+            <MatchSummary basePath={basePath} match={match} selectedDateKey={selectedDateKey} />
           </p>
           <span className="font-mono text-[0.62rem] uppercase leading-none tracking-[0.08em] text-[#5C5752]">
             {getStageLabel(match)}
@@ -337,7 +356,17 @@ function GuessList({
   );
 }
 
-function TeamLabel({ href, meta, showName = false }: { href?: string | null; meta: MatchdayTeamMeta; showName?: boolean }) {
+function TeamLabel({
+  href,
+  meta,
+  onNavigate,
+  showName = false,
+}: {
+  href?: string | null;
+  meta: MatchdayTeamMeta;
+  onNavigate?: MouseEventHandler<HTMLAnchorElement>;
+  showName?: boolean;
+}) {
   const content = (
     <>
       <TeamFlag meta={meta} />
@@ -358,6 +387,7 @@ function TeamLabel({ href, meta, showName = false }: { href?: string | null; met
       <Link
         href={href}
         className="inline-flex min-w-0 items-center gap-1.5 border-b border-[#4B607C40] text-[#252F3D] transition-colors hover:border-[#4B607C] hover:text-[#4B607C]"
+        onClick={onNavigate}
         title={`View ${meta.team} knockout guesses`}
       >
         {content}
@@ -464,9 +494,12 @@ function getSafeInitialDateKey(data: HomepageMatchdayData): string {
   return data.initialDateKey ?? data.matchdays[0]?.dateKey ?? '';
 }
 
-function MatchSummary({ basePath, match }: { basePath: string; match: MatchdayMatch }) {
+function MatchSummary({ basePath, match, selectedDateKey }: { basePath: string; match: MatchdayMatch; selectedDateKey: string }) {
   const homeTeamHref = getKnockoutTeamHref(basePath, match, match.homeTeam);
   const awayTeamHref = getKnockoutTeamHref(basePath, match, match.awayTeam);
+  const rememberMatchday = () => {
+    rememberMatchdayReturn(basePath, selectedDateKey);
+  };
 
   if (hasVisibleScore(match)) {
     return (
@@ -475,10 +508,12 @@ function MatchSummary({ basePath, match }: { basePath: string; match: MatchdayMa
         awayPenaltyGoals={match.awayPenaltyGoals}
         awayTeamMeta={match.awayTeamMeta}
         awayTeamHref={awayTeamHref}
+        onAwayTeamNavigate={rememberMatchday}
         homeGoals={match.homeGoals}
         homePenaltyGoals={match.homePenaltyGoals}
         homeTeamMeta={match.homeTeamMeta}
         homeTeamHref={homeTeamHref}
+        onHomeTeamNavigate={rememberMatchday}
         showTeamNames
       />
     );
@@ -486,9 +521,9 @@ function MatchSummary({ basePath, match }: { basePath: string; match: MatchdayMa
 
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      <TeamLabel href={homeTeamHref} meta={match.homeTeamMeta} showName />
+      <TeamLabel href={homeTeamHref} meta={match.homeTeamMeta} onNavigate={rememberMatchday} showName />
       <span className="font-mono text-[0.72rem] uppercase text-[#5C5752]">vs</span>
-      <TeamLabel href={awayTeamHref} meta={match.awayTeamMeta} showName />
+      <TeamLabel href={awayTeamHref} meta={match.awayTeamMeta} onNavigate={rememberMatchday} showName />
     </span>
   );
 }
@@ -616,6 +651,8 @@ function ScoreSummary({
   homePenaltyGoals,
   homeTeamMeta,
   homeTeamHref,
+  onAwayTeamNavigate,
+  onHomeTeamNavigate,
   showTeamNames = false,
 }: {
   awayGoals: number | string | null;
@@ -626,11 +663,13 @@ function ScoreSummary({
   homePenaltyGoals: number | string | null;
   homeTeamMeta: MatchdayTeamMeta;
   homeTeamHref?: string | null;
+  onAwayTeamNavigate?: MouseEventHandler<HTMLAnchorElement>;
+  onHomeTeamNavigate?: MouseEventHandler<HTMLAnchorElement>;
   showTeamNames?: boolean;
 }) {
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
-      <TeamLabel href={homeTeamHref} meta={homeTeamMeta} showName={showTeamNames} />
+      <TeamLabel href={homeTeamHref} meta={homeTeamMeta} onNavigate={onHomeTeamNavigate} showName={showTeamNames} />
       <span className="inline-flex shrink-0 items-baseline gap-1">
         <span>{formatScoreValue(homeGoals)}-{formatScoreValue(awayGoals)}</span>
         {hasPenaltyScore(homePenaltyGoals, awayPenaltyGoals) ? (
@@ -639,7 +678,7 @@ function ScoreSummary({
           </span>
         ) : null}
       </span>
-      <TeamLabel href={awayTeamHref} meta={awayTeamMeta} showName={showTeamNames} />
+      <TeamLabel href={awayTeamHref} meta={awayTeamMeta} onNavigate={onAwayTeamNavigate} showName={showTeamNames} />
     </span>
   );
 }
@@ -688,6 +727,75 @@ function getRawTeamSlug(team: string): string {
 
 function isPlaceholderTeam(team: string): boolean {
   return /^(tbd|to be determined|winner\b|runner-up\b|runner up\b|w\d+|l\d+)$/i.test(team.trim());
+}
+
+function getHomePath(basePath: string): string {
+  return basePath === '/' || basePath === '' ? '/' : basePath.replace(/\/$/, '');
+}
+
+function getMatchdayReturnStorageKey(homePath: string): string {
+  return `worldcup:matchday-return:${homePath}`;
+}
+
+function rememberMatchdayReturn(basePath: string, dateKey: string) {
+  if (typeof window === 'undefined' || !dateKey) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      getMatchdayReturnStorageKey(getHomePath(basePath)),
+      JSON.stringify({ dateKey }),
+    );
+  } catch {
+    // Some privacy modes can block sessionStorage; navigation should still work.
+  }
+}
+
+function takeStoredMatchdayReturn(homePath: string, matchdays: MatchdayView[]): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const storageKey = getMatchdayReturnStorageKey(homePath);
+
+  try {
+    const rawValue = window.sessionStorage.getItem(storageKey);
+    window.sessionStorage.removeItem(storageKey);
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const value = JSON.parse(rawValue) as { dateKey?: unknown };
+    const dateKey = typeof value.dateKey === 'string' ? value.dateKey : null;
+
+    return dateKey && matchdays.some((matchday) => matchday.dateKey === dateKey) ? dateKey : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearStoredMatchdayReturn(homePath: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(getMatchdayReturnStorageKey(homePath));
+  } catch {
+    // Ignore blocked storage; the homepage will fall back to its normal initial date.
+  }
+}
+
+function isReloadNavigation(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const [navigationEntry] = window.performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+
+  return navigationEntry?.type === 'reload';
 }
 
 function formatDateKey(
