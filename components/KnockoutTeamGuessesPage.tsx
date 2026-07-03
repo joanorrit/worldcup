@@ -7,6 +7,7 @@ import {
   type KnockoutTeamGuessRow,
 } from '@/lib/knockout-team-guesses';
 import type { MatchdayTeamMeta } from '@/lib/matchday-types';
+import { getPlayerPath } from '@/lib/player-slugs';
 import type { PredictionGroupConfig } from '@/lib/prediction-groups';
 import type { WorldCupMatch } from '@/lib/world-cup-matches';
 
@@ -400,12 +401,6 @@ function getSelectedTeamMeta(
     flagSrc: null,
     team: selectedTeam,
   };
-}
-
-function getPlayerPath(player: string, basePath: string) {
-  const normalizedBasePath = basePath === '/' ? '' : basePath.replace(/\/$/, '');
-
-  return `${normalizedBasePath}/${encodeURIComponent(player.toLowerCase())}`;
 }
 
 function getHomeHref(group: PredictionGroupConfig): string {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { Standing } from '@/lib/leaderboard';
+import { getPlayerPath } from '@/lib/player-slugs';
 
 export interface LeaderboardSnapshotView {
   dateKey: string;
@@ -386,12 +387,6 @@ function clampIndex(index: number, length: number) {
   }
 
   return Math.min(Math.max(index, 0), length - 1);
-}
-
-function getPlayerPath(player: string, basePath: string) {
-  const normalizedBasePath = basePath === '/' ? '' : basePath.replace(/\/$/, '');
-
-  return `${normalizedBasePath}/${encodeURIComponent(player.toLowerCase())}`;
 }
 
 function formatNumber(value: number) {
