@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { list, put } from '@vercel/blob';
+import { get, put } from '@vercel/blob';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -161,24 +161,16 @@ async function readBlobWorldCupMatchCache(): Promise<WorldCupMatchCache | null> 
   }
 
   try {
-    const page = await list({
-      limit: 10,
-      prefix: WORLD_CUP_CACHE_BLOB_PATH,
+    const blob = await get(WORLD_CUP_CACHE_BLOB_PATH, {
+      access: 'public',
       token,
     });
-    const blob = page.blobs.find((entry) => entry.pathname === WORLD_CUP_CACHE_BLOB_PATH);
 
-    if (!blob) {
+    if (!blob || blob.statusCode !== 200) {
       return null;
     }
 
-    const response = await fetch(blob.url, { cache: 'no-store' });
-
-    if (!response.ok) {
-      throw new Error(`Could not read World Cup match cache ${WORLD_CUP_CACHE_BLOB_PATH} from Blob.`);
-    }
-
-    return parseWorldCupMatchCache(await response.text());
+    return parseWorldCupMatchCache(await new Response(blob.stream).text());
   } catch (error) {
     console.error('Could not read World Cup match cache from Blob.', error);
     return null;

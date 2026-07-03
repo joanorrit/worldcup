@@ -1,14 +1,10 @@
 import 'server-only';
 
-import { list } from '@vercel/blob';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { parse } from 'csv-parse/sync';
-import {
-  getSafeResultFileName,
-  isResultFileName,
-} from '@/lib/result-files';
+import { isResultFileName } from '@/lib/result-files';
 import {
   DEFAULT_PREDICTION_GROUP_ID,
   getLeaderboardBlobSnapshotCacheTag,
@@ -17,6 +13,10 @@ import {
   type PredictionGroupConfig,
   type PredictionGroupId,
 } from '@/lib/prediction-groups';
+import {
+  listResultBlobManifestEntries,
+  readResultBlobManifestEntries,
+} from '@/lib/result-blob-manifest';
 
 const CSV_DATE_PATTERN = /(\d{4})_(\d{2})_(\d{2})/;
 const LEADERBOARD_BLOB_SNAPSHOT_CACHE_REVALIDATE_SECONDS = 24 * 60 * 60;
@@ -179,53 +179,50 @@ async function getBlobSnapshotSources(group: PredictionGroupConfig): Promise<Sna
     return [];
   }
 
+  let manifestEntries: Awaited<ReturnType<typeof readResultBlobManifestEntries>> = null;
+
   try {
-    const sources: SnapshotSource[] = [];
-    let cursor: string | undefined;
+    manifestEntries = await readResultBlobManifestEntries(group, token);
+  } catch (error) {
+    console.error(`Could not read result Blob manifest for ${group.id}.`, error);
+  }
 
-    do {
-      const page = await list({
-        cursor,
-        prefix: group.resultsBlobPrefix,
-        token,
-      });
+  if (manifestEntries) {
+    return getBlobSnapshotSourcesFromManifest(manifestEntries);
+  }
 
-      const pageSources = await Promise.all(
-        page.blobs.map(async (blob) => {
-          const fileName = getSafeResultFileName(blob.pathname);
-
-          if (!isResultFileName(fileName)) {
-            return null;
-          }
-
-          const response = await fetch(blob.url, { cache: 'no-store' });
-
-          if (!response.ok) {
-            throw new Error(`Could not read uploaded result CSV ${fileName}.`);
-          }
-
-          return {
-            fileName,
-            content: await response.text(),
-            fallbackDate: blob.uploadedAt,
-          };
-        }),
-      );
-
-      for (const source of pageSources) {
-        if (source) {
-          sources.push(source);
-        }
-      }
-
-      cursor = page.cursor;
-    } while (cursor);
-
-    return sources;
+  try {
+    return getBlobSnapshotSourcesFromManifest(await listResultBlobManifestEntries(group, token));
   } catch (error) {
     console.error(`Could not read Vercel Blob result CSVs for ${group.id}.`, error);
     return [];
   }
+}
+
+async function getBlobSnapshotSourcesFromManifest(
+  entries: Array<{
+    fileName: string;
+    uploadedAt: string;
+    url: string;
+  }>,
+): Promise<SnapshotSource[]> {
+  const sources = await Promise.all(
+    entries.map(async (entry) => {
+      const response = await fetch(entry.url, { cache: 'no-store' });
+
+      if (!response.ok) {
+        throw new Error(`Could not read uploaded result CSV ${entry.fileName}.`);
+      }
+
+      return {
+        fileName: entry.fileName,
+        content: await response.text(),
+        fallbackDate: new Date(entry.uploadedAt),
+      };
+    }),
+  );
+
+  return sources.filter((source) => isResultFileName(source.fileName));
 }
 
 function readSnapshot(source: SnapshotSource): LeaderboardSnapshot {

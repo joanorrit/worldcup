@@ -15,6 +15,7 @@ import {
   type PredictionGroupConfig,
   type PredictionGroupId,
 } from '@/lib/prediction-groups';
+import { upsertResultBlobManifestEntry } from '@/lib/result-blob-manifest';
 
 export const dynamic = 'force-dynamic';
 
@@ -186,12 +187,14 @@ async function processResultUpload(
   }
 
   try {
-    await put(`${group.resultsBlobPrefix}${fileName}`, content, {
+    const blob = await put(`${group.resultsBlobPrefix}${fileName}`, content, {
       access: 'public',
       allowOverwrite: true,
       contentType: 'text/csv; charset=utf-8',
       token: blobToken,
     });
+
+    await upsertResultBlobManifestEntry(group, blobToken, blob);
   } catch (error) {
     console.error('Could not upload result CSV to Vercel Blob.', error);
     return { ok: false, message: getBlobUploadErrorMessage(error) };
