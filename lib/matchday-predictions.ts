@@ -248,7 +248,7 @@ function getKnockoutMatchIndex(matches: WorldCupMatch[]): KnockoutMatchIndex {
       continue;
     }
 
-    const teamPairKey = getTeamPairKey(match.homeTeam, match.awayTeam);
+    const teamPairKey = getStageTeamPairKey(match.stage, match.homeTeam, match.awayTeam);
 
     if (teamPairKey) {
       const existingMatch = matchesByTeamPair.get(teamPairKey);
@@ -279,7 +279,7 @@ function getPredictionEvaluationMatch(
     return displayedMatch;
   }
 
-  const teamPairKey = getTeamPairKey(prediction.homeTeam, prediction.awayTeam);
+  const teamPairKey = getStageTeamPairKey(displayedMatch.stage, prediction.homeTeam, prediction.awayTeam);
 
   if (!teamPairKey) {
     return displayedMatch;
@@ -330,6 +330,12 @@ function getTeamPairKey(homeTeam: string, awayTeam: string): string | null {
   }
 
   return teams.join('|');
+}
+
+function getStageTeamPairKey(stage: string, homeTeam: string, awayTeam: string): string | null {
+  const teamPairKey = getTeamPairKey(homeTeam, awayTeam);
+
+  return teamPairKey ? `${stage}|${teamPairKey}` : null;
 }
 
 function getDateTimeKey(dateKey: string, time: string | null): string {

@@ -13,6 +13,7 @@ This repo is a small Next.js 14 App Router app for a friends World Cup predictio
 
 - For UI/product work in this repo, use `.agents/skills/worldcup-custom-app/SKILL.md`.
 - For larger styling changes, read `.agents/skills/worldcup-custom-app/ui-design-style.md` and treat it as the visual source of truth.
+- For match-of-the-day guess inclusion, colors, knockout team links, and badges, use `.agents/skills/worldcup-matchday-guesses/SKILL.md`.
 - For React/Next.js performance, data fetching, rendering, or bundle work, use `.agents/skills/vercel-react-best-practices/SKILL.md`; detailed rules live in `.agents/skills/vercel-react-best-practices/rules/`.
 - Do not edit `.agents/skills/*/AGENTS.md` for general repo context. Those files belong to their specific skills.
 

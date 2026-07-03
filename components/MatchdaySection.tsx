@@ -533,7 +533,7 @@ function getStatusLabel(match: MatchdayMatch): string {
     return 'FT';
   }
 
-  if (match.status === 'IN_PLAY' || match.status === 'PAUSED') {
+  if (match.status === 'IN_PLAY' || match.status === 'PAUSED' || (match.status === 'TIMED' && hasKnownScore(match))) {
     return 'Live';
   }
 
@@ -565,9 +565,15 @@ function formatStageName(stage: string): string {
 
 function hasVisibleScore(match: MatchdayMatch): boolean {
   return (
+    hasKnownScore(match) &&
+    (match.status === 'FINISHED' || match.status === 'IN_PLAY' || match.status === 'PAUSED' || match.status === 'TIMED')
+  );
+}
+
+function hasKnownScore(match: MatchdayMatch): boolean {
+  return (
     match.homeGoals !== null &&
-    match.awayGoals !== null &&
-    (match.status === 'FINISHED' || match.status === 'IN_PLAY' || match.status === 'PAUSED')
+    match.awayGoals !== null
   );
 }
 

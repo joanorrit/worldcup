@@ -1,0 +1,4 @@
+interface:
+  display_name: "World Cup Matchday Guesses"
+  short_description: "Matchday guess scoring and badges"
+  default_prompt: "Use $worldcup-matchday-guesses to inspect or change matchday guess matching, colors, team links, and badges."
