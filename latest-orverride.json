@@ -1,0 +1,21 @@
+{
+  "matches": [
+    {
+      "id": "537427",
+      "sourceId": 537427,
+      "dateKey": "2026-07-04",
+      "utcDate": "2026-07-03T22:00:00.000Z",
+      "displayTime": "00:00",
+      "status": "FINISHED",
+      "stage": "LAST_32",
+      "group": null,
+      "homeTeam": "Argentina",
+      "awayTeam": "Cape Verde Islands",
+      "homeGoals": 3,
+      "awayGoals": 2,
+      "homePenaltyGoals": null,
+      "awayPenaltyGoals": null,
+      "winner": "HOME_TEAM"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import path from 'node:path';
 
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
 const LOCAL_DEVELOPMENT_MATCH_CACHE_PATH = path.join(process.cwd(), 'latest.json');
+const LOCAL_MATCH_OVERRIDE_CACHE_PATH = path.join(process.cwd(), 'latest-orverride.json');
 const LOCAL_MATCH_CACHE_PATH = path.join(process.cwd(), 'data', 'worldcup-matches.local.json');
 const WORLD_CUP_MATCH_CACHE_TAG = 'world-cup-match-cache';
 const WORLD_CUP_MATCH_CACHE_REVALIDATE_SECONDS = 24 * 60 * 60;
@@ -83,16 +84,16 @@ export async function getWorldCupMatchCache(): Promise<WorldCupMatchCache | null
   const cached = await readCachedBlobWorldCupMatchCache();
 
   if (cached) {
-    return cached;
+    return applyLocalWorldCupMatchOverrides(cached);
   }
 
   const developmentCache = await readLocalDevelopmentWorldCupMatchCache();
 
   if (developmentCache) {
-    return developmentCache;
+    return applyLocalWorldCupMatchOverrides(developmentCache);
   }
 
-  return readLocalWorldCupMatchCache();
+  return applyLocalWorldCupMatchOverrides(await readLocalWorldCupMatchCache());
 }
 
 export async function syncWorldCupMatches(): Promise<WorldCupMatchCache> {
@@ -221,6 +222,64 @@ async function readLocalWorldCupMatchCache(): Promise<WorldCupMatchCache | null>
     console.error('Could not read local World Cup match cache.', error);
     return null;
   }
+}
+
+async function applyLocalWorldCupMatchOverrides(
+  cache: WorldCupMatchCache | null,
+): Promise<WorldCupMatchCache | null> {
+  const overrides = await readLocalWorldCupMatchOverrideCache();
+
+  if (!overrides || overrides.matches.length === 0) {
+    return cache;
+  }
+
+  if (!cache) {
+    return {
+      ...overrides,
+      source: 'local override',
+    };
+  }
+
+  const matches = [...cache.matches];
+
+  for (const override of overrides.matches) {
+    const targetIndex = findWorldCupMatchOverrideTargetIndex(matches, override);
+
+    if (targetIndex >= 0) {
+      matches[targetIndex] = override;
+    } else {
+      matches.push(override);
+    }
+  }
+
+  return {
+    ...cache,
+    matches: matches.sort(compareWorldCupMatches),
+    source: `${cache.source} + local override`,
+  };
+}
+
+async function readLocalWorldCupMatchOverrideCache(): Promise<WorldCupMatchCache | null> {
+  try {
+    return parseWorldCupMatchCache(await readFile(LOCAL_MATCH_OVERRIDE_CACHE_PATH, 'utf8'));
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return null;
+    }
+
+    console.error('Could not read local World Cup match override cache.', error);
+    return null;
+  }
+}
+
+function findWorldCupMatchOverrideTargetIndex(matches: WorldCupMatch[], override: WorldCupMatch): number {
+  const idIndex = matches.findIndex((match) => match.id === override.id);
+
+  if (idIndex >= 0) {
+    return idIndex;
+  }
+
+  return matches.findIndex((match) => match.sourceId === override.sourceId);
 }
 
 function parseWorldCupMatchCache(content: string): WorldCupMatchCache | null {
