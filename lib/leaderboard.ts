@@ -16,6 +16,7 @@ import {
 import {
   listResultBlobManifestEntries,
   readResultBlobManifestEntries,
+  writeResultBlobManifestEntries,
 } from '@/lib/result-blob-manifest';
 
 const CSV_DATE_PATTERN = /(\d{4})_(\d{2})_(\d{2})/;
@@ -192,7 +193,16 @@ async function getBlobSnapshotSources(group: PredictionGroupConfig): Promise<Sna
   }
 
   try {
-    return getBlobSnapshotSourcesFromManifest(await listResultBlobManifestEntries(group, token));
+    console.warn(`Result Blob manifest is missing or invalid for ${group.id}; rebuilding it from Blob list.`);
+    const fallbackEntries = await listResultBlobManifestEntries(group, token);
+
+    try {
+      await writeResultBlobManifestEntries(group, token, fallbackEntries);
+    } catch (error) {
+      console.error(`Could not rebuild result Blob manifest for ${group.id}.`, error);
+    }
+
+    return getBlobSnapshotSourcesFromManifest(fallbackEntries);
   } catch (error) {
     console.error(`Could not read Vercel Blob result CSVs for ${group.id}.`, error);
     return [];

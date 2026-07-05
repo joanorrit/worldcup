@@ -112,12 +112,20 @@ export async function upsertResultBlobManifestEntry(
   const entriesByFileName = new Map(entries.map((existingEntry) => [existingEntry.fileName, existingEntry]));
   entriesByFileName.set(entry.fileName, entry);
 
+  await writeResultBlobManifestEntries(group, token, Array.from(entriesByFileName.values()));
+}
+
+export async function writeResultBlobManifestEntries(
+  group: PredictionGroupConfig,
+  token: string,
+  entries: ResultBlobManifestEntry[],
+): Promise<void> {
   await put(
     getResultBlobManifestPath(group),
     JSON.stringify(
       {
         version: RESULT_BLOB_MANIFEST_VERSION,
-        files: Array.from(entriesByFileName.values()).sort((a, b) => a.fileName.localeCompare(b.fileName)),
+        files: [...entries].sort((a, b) => a.fileName.localeCompare(b.fileName)),
       },
       null,
       2,
