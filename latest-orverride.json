@@ -16,6 +16,23 @@
       "homePenaltyGoals": null,
       "awayPenaltyGoals": null,
       "winner": "HOME_TEAM"
+    },
+    {
+      "id": "537378",
+      "sourceId": 537378,
+      "dateKey": "2026-07-06",
+      "utcDate": "2026-07-06T01:00:00.000Z",
+      "displayTime": "02:00",
+      "status": "FINISHED",
+      "stage": "LAST_16",
+      "group": null,
+      "homeTeam": "Mexico",
+      "awayTeam": "England",
+      "homeGoals": 2,
+      "awayGoals": 3,
+      "homePenaltyGoals": null,
+      "awayPenaltyGoals": null,
+      "winner": "AWAY_TEAM"
     }
   ]
 }
