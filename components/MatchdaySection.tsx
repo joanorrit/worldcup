@@ -11,6 +11,8 @@ import type {
   MatchdayView,
 } from '@/lib/matchday-types';
 
+type MatchPanelTab = 'guesses' | 'consensus' | 'links';
+
 interface MatchdaySectionProps {
   basePath?: string;
   data: HomepageMatchdayData;
@@ -20,6 +22,7 @@ export function MatchdaySection({ basePath = '', data }: MatchdaySectionProps) {
   const initialDateKey = getSafeInitialDateKey(data);
   const [selectedDateKey, setSelectedDateKey] = useState(initialDateKey);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [activeMatchTab, setActiveMatchTab] = useState<MatchPanelTab>('guesses');
   const [useAccessibleGuessColors, setUseAccessibleGuessColors] = useState(false);
   const activeDateChipRef = useRef<HTMLButtonElement | null>(null);
   const dateRailScrollRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +67,7 @@ export function MatchdaySection({ basePath = '', data }: MatchdaySectionProps) {
   function selectDate(dateKey: string) {
     setSelectedDateKey(dateKey);
     setExpandedMatchId(null);
+    setActiveMatchTab('guesses');
   }
 
   function selectByOffset(offset: -1 | 1) {
@@ -157,7 +161,18 @@ export function MatchdaySection({ basePath = '', data }: MatchdaySectionProps) {
                 basePath={basePath}
                 expanded={expandedMatchId === match.id}
                 match={match}
-                onToggle={() => setExpandedMatchId((current) => (current === match.id ? null : match.id))}
+                activeTab={activeMatchTab}
+                onTabChange={setActiveMatchTab}
+                onToggle={() => {
+                  setExpandedMatchId((current) => {
+                    if (current === match.id) {
+                      return null;
+                    }
+
+                    setActiveMatchTab('guesses');
+                    return match.id;
+                  });
+                }}
                 selectedDateKey={selectedDateKey}
               />
             ))}
@@ -271,16 +286,20 @@ function GuessColorButton({
 
 function MatchRow({
   accessibleGuessColors,
+  activeTab,
   basePath,
   expanded,
   match,
+  onTabChange,
   onToggle,
   selectedDateKey,
 }: {
   accessibleGuessColors: boolean;
+  activeTab: MatchPanelTab;
   basePath: string;
   expanded: boolean;
   match: MatchdayMatch;
+  onTabChange: (tab: MatchPanelTab) => void;
   onToggle: () => void;
   selectedDateKey: string;
 }) {
@@ -304,12 +323,94 @@ function MatchRow({
           onClick={onToggle}
           className="inline-flex h-8 items-center justify-center border border-[#8B847D59] bg-transparent px-3 font-mono text-[0.64rem] uppercase leading-none tracking-[0.1em] text-[#252F3D] transition hover:border-[#5C575280] hover:bg-[#EBE7E4]"
         >
-          {expanded ? 'Hide' : 'Guesses'}
+          {expanded ? 'Hide' : 'More'}
         </button>
       </div>
 
-      {expanded ? <GuessList accessibleColors={accessibleGuessColors} guesses={match.guesses} match={match} /> : null}
+      {expanded ? (
+        <MatchPanel
+          accessibleGuessColors={accessibleGuessColors}
+          activeTab={activeTab}
+          match={match}
+          onTabChange={onTabChange}
+        />
+      ) : null}
     </article>
+  );
+}
+
+function MatchPanel({
+  accessibleGuessColors,
+  activeTab,
+  match,
+  onTabChange,
+}: {
+  accessibleGuessColors: boolean;
+  activeTab: MatchPanelTab;
+  match: MatchdayMatch;
+  onTabChange: (tab: MatchPanelTab) => void;
+}) {
+  const tabs = getMatchPanelTabs(match);
+  const selectedTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : 'guesses';
+
+  return (
+    <div className="border-t border-[#8B847D2E]">
+      <div className="flex gap-1 overflow-x-auto border-b border-[#8B847D2E] px-4 py-2 sm:px-5">
+        {tabs.map((tab) => (
+          <PanelTabButton
+            key={tab.id}
+            active={selectedTab === tab.id}
+            label={tab.label}
+            onClick={() => onTabChange(tab.id)}
+          />
+        ))}
+      </div>
+
+      {selectedTab === 'guesses' ? (
+        <GuessList accessibleColors={accessibleGuessColors} guesses={match.guesses} match={match} />
+      ) : null}
+      {selectedTab === 'consensus' ? <ConsensusPanel match={match} /> : null}
+      {selectedTab === 'links' ? <LinksPanel match={match} /> : null}
+    </div>
+  );
+}
+
+function getMatchPanelTabs(match: MatchdayMatch): Array<{ id: MatchPanelTab; label: string }> {
+  const tabs: Array<{ id: MatchPanelTab; label: string }> = [
+    { id: 'guesses', label: 'Guesses' },
+    { id: 'consensus', label: 'Consensus' },
+  ];
+
+  if (match.links) {
+    tabs.push({ id: 'links', label: 'Links' });
+  }
+
+  return tabs;
+}
+
+function PanelTabButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={[
+        'inline-flex h-8 shrink-0 items-center justify-center border px-3 font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] transition',
+        active
+          ? 'border-[#4B607C80] bg-[#EEF1F3] text-[#252F3D]'
+          : 'border-[#8B847D40] bg-transparent text-[#5C5752] hover:border-[#5C575280] hover:bg-[#EBE7E4]',
+      ].join(' ')}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -331,7 +432,7 @@ function GuessList({
   }
 
   return (
-    <div className="border-t border-[#8B847D2E] px-4 py-2.5 sm:px-5">
+    <div className="px-4 py-2.5 sm:px-5">
       <div className="divide-y divide-[#8B847D24] border border-[#8B847D24] bg-[#F4F2F0]">
         {guesses.map((guess) => {
           const tone = getGuessTone(guess, accessibleColors, match);
@@ -354,6 +455,465 @@ function GuessList({
       </div>
     </div>
   );
+}
+
+function ConsensusPanel({ match }: { match: MatchdayMatch }) {
+  const summary = getConsensusSummary(match);
+
+  if (match.guesses.length === 0) {
+    return (
+      <p className="px-4 py-3 text-sm leading-[1.45] text-[#5C5752] sm:px-5">
+        No guesses matched this fixture yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3 px-4 py-3 sm:px-5">
+      <PredictionSplitPanel
+        title={match.stage === 'GROUP_STAGE' ? 'Predicted outcome' : 'Predicted advancing team'}
+        entries={summary.predictionEntries}
+        total={summary.predictionCount}
+        showFlags
+      />
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <CompactPanel title="Fixture confidence">
+          <div className="space-y-2">
+            <ConsensusBar label="Exact fixture" value={summary.exactFixtureCount} total={match.guesses.length} />
+            <ConsensusBar label="One team" value={summary.oneTeamCount} total={match.guesses.length} />
+            <ConsensusBar label="Different fixture" value={summary.differentFixtureCount} total={match.guesses.length} />
+          </div>
+        </CompactPanel>
+
+        <CompactPanel title="Common scores">
+          {summary.commonScores.length > 0 ? (
+            <ul className="space-y-1.5">
+              {summary.commonScores.map((score) => (
+                <li key={score.label} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-mono text-[0.78rem] text-[#252F3D]">{score.label}</span>
+                  <span className="text-right text-[#5C5752]">{formatPlayerCount(score.players.length)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyPanelText>No numeric score guesses yet.</EmptyPanelText>
+          )}
+        </CompactPanel>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <CompactPanel title="Contrarian picks">
+          {summary.rareScores.length > 0 ? (
+            <ul className="space-y-1.5">
+              {summary.rareScores.map((score) => (
+                <li key={`${score.label}-${score.players[0]}`} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-mono text-[0.78rem] text-[#252F3D]">{score.label}</span>
+                  <span className="min-w-0 truncate text-right text-[#5C5752]">{score.players[0]}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyPanelText>No one-off score picks yet.</EmptyPanelText>
+          )}
+        </CompactPanel>
+
+        <CompactPanel title="Impact now">
+          {summary.hasKnownScore ? (
+            <div className="space-y-2">
+              <ImpactLine label="Exact score" players={summary.exactPlayers} />
+              <ImpactLine label="Correct sign" players={summary.signPlayers} />
+              <ImpactLine label="Goal difference" players={summary.goalDifferencePlayers} />
+              <ImpactLine label="Knockout pass" players={summary.advancementPlayers} />
+              <ImpactLine label="Penalty score" players={summary.penaltyPlayers} />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <ImpactLine label="Contrarian" players={summary.rareScorePlayers} />
+              <ImpactLine label="Knockout pass" players={summary.advancementPlayers} />
+            </div>
+          )}
+        </CompactPanel>
+      </div>
+    </div>
+  );
+}
+
+function PredictionSplitPanel({
+  entries,
+  showFlags = false,
+  title,
+  total,
+}: {
+  entries: PredictionEntry[];
+  showFlags?: boolean;
+  title: string;
+  total: number;
+}) {
+  return (
+    <CompactPanel title={title}>
+      {entries.length > 0 ? (
+        <div className="space-y-2">
+          {entries.map((entry) => (
+            <PredictionSplitRow
+              key={entry.key}
+              entry={entry}
+              showFlag={showFlags}
+              total={total}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyPanelText>No numeric predictions yet.</EmptyPanelText>
+      )}
+    </CompactPanel>
+  );
+}
+
+function PredictionSplitRow({
+  entry,
+  showFlag,
+  total,
+}: {
+  entry: PredictionEntry;
+  showFlag: boolean;
+  total: number;
+}) {
+  const percent = total > 0 ? Math.round((entry.players.length / total) * 100) : 0;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-sm font-medium text-[#252F3D]">
+          {showFlag && entry.meta ? <TeamFlag meta={entry.meta} /> : null}
+          <span className="min-w-0 truncate">{entry.label}</span>
+        </span>
+        <span className="shrink-0 font-mono text-[0.72rem] leading-none text-[#252F3D]">
+          {percent}% / {entry.players.length}
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden bg-[#EBE7E4]">
+        <div className="h-full bg-[#4B607C]" style={{ width: `${percent}%` }} />
+      </div>
+      <p className="mt-1.5 truncate text-xs leading-none text-[#5C5752]">{formatPlayerList(entry.players)}</p>
+    </div>
+  );
+}
+
+function ConsensusBar({ label, total, value }: { label: string; total: number; value: number }) {
+  const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-[#252F3D]">{label}</span>
+        <span className="font-mono text-[0.72rem] text-[#5C5752]">{percent}% / {value}</span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden bg-[#EBE7E4]">
+        <div className="h-full bg-[#4B607C]" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function CompactPanel({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <section className="border border-[#8B847D24] bg-[#F4F2F0] p-3">
+      <h3 className="mb-2 font-mono text-[0.62rem] uppercase leading-none tracking-[0.1em] text-[#5C5752]">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function ImpactLine({ label, players }: { label: string; players: string[] }) {
+  return (
+    <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 text-sm">
+      <span className="font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[#5C5752]">{label}</span>
+      <span className="min-w-0 text-[#252F3D]">
+        {players.length > 0 ? formatPlayerList(players) : <span className="text-[#8B847D]">None</span>}
+      </span>
+    </div>
+  );
+}
+
+function LinksPanel({ match }: { match: MatchdayMatch }) {
+  return (
+    <div className="space-y-3 px-4 py-3 sm:px-5">
+      {match.links?.note ? <p className="text-sm leading-[1.45] text-[#5C5752]">{match.links.note}</p> : null}
+
+      <div className="flex flex-wrap gap-2">
+        {match.links?.matchCenterUrl ? (
+          <ExternalLinkButton href={match.links.matchCenterUrl}>Match center</ExternalLinkButton>
+        ) : null}
+        {match.links?.previewUrl ? (
+          <ExternalLinkButton href={match.links.previewUrl}>Preview</ExternalLinkButton>
+        ) : null}
+        {match.links?.highlightsUrl ? (
+          <ExternalLinkButton href={match.links.highlightsUrl}>Highlights</ExternalLinkButton>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ExternalLinkButton({ children, href }: { children: ReactNode; href: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex h-8 items-center justify-center border border-[#8B847D59] bg-transparent px-3 font-mono text-[0.64rem] uppercase leading-none tracking-[0.1em] text-[#252F3D] transition hover:border-[#5C575280] hover:bg-[#EBE7E4]"
+    >
+      {children}
+    </a>
+  );
+}
+
+function EmptyPanelText({ children }: { children: ReactNode }) {
+  return <p className="text-sm leading-[1.45] text-[#5C5752]">{children}</p>;
+}
+
+interface PredictionEntry {
+  key: string;
+  label: string;
+  meta: MatchdayTeamMeta | null;
+  players: string[];
+}
+
+function getConsensusSummary(match: MatchdayMatch) {
+  const scoreGroups = new Map<string, string[]>();
+  const advancingGroups = new Map<string, PredictionEntry>();
+  const outcomeGroups = new Map<string, PredictionEntry>();
+  const hasKnownScore = hasKnownScoreValue(match.homeGoals) && hasKnownScoreValue(match.awayGoals);
+  const exactPlayers: string[] = [];
+  const signPlayers: string[] = [];
+  const goalDifferencePlayers: string[] = [];
+  const advancementPlayers: string[] = [];
+  const penaltyPlayers: string[] = [];
+  let exactFixtureCount = 0;
+  let oneTeamCount = 0;
+  let differentFixtureCount = 0;
+  let advancingGuessCount = 0;
+  let outcomeGuessCount = 0;
+
+  for (const guess of match.guesses) {
+    const homeGoals = parseGuessGoal(guess.homeGoals);
+    const awayGoals = parseGuessGoal(guess.awayGoals);
+    const matchingTeamCount = countKnownFixtureTeamMatches(match, guess);
+
+    if (guess.teamsMatch) {
+      exactFixtureCount += 1;
+    } else if (matchingTeamCount === 1) {
+      oneTeamCount += 1;
+    } else {
+      differentFixtureCount += 1;
+    }
+
+    if (homeGoals !== null && awayGoals !== null) {
+      const scoreKey = `${homeGoals}-${awayGoals}`;
+      const players = scoreGroups.get(scoreKey) ?? [];
+      players.push(guess.player);
+      scoreGroups.set(scoreKey, players);
+
+      if (match.stage !== 'GROUP_STAGE') {
+        const predictedAdvancingTeam = getPredictedAdvancingTeam(guess, homeGoals, awayGoals);
+
+        if (predictedAdvancingTeam) {
+          addPredictionEntry(advancingGroups, predictedAdvancingTeam, guess.player);
+          advancingGuessCount += 1;
+        }
+      } else {
+        const predictedOutcome = getPredictedGroupOutcome(guess, homeGoals, awayGoals);
+        addPredictionEntry(outcomeGroups, predictedOutcome, guess.player);
+        outcomeGuessCount += 1;
+      }
+
+      if (
+        hasKnownScore &&
+        homeGoals - awayGoals === (match.homeGoals as number) - (match.awayGoals as number) &&
+        guess.resultMatch !== true
+      ) {
+        goalDifferencePlayers.push(guess.player);
+      }
+    }
+
+    if (guess.resultMatch === true) {
+      exactPlayers.push(guess.player);
+    }
+
+    if (guess.signMatch === true && guess.resultMatch !== true) {
+      signPlayers.push(guess.player);
+    }
+
+    if (guess.knockoutAdvancementMatch === true) {
+      advancementPlayers.push(guess.player);
+    }
+
+    if (guess.penaltyScoreMatch === true) {
+      penaltyPlayers.push(guess.player);
+    }
+  }
+
+  const commonScores = Array.from(scoreGroups.entries())
+    .map(([label, players]) => ({ label, players }))
+    .sort((a, b) => b.players.length - a.players.length || a.label.localeCompare(b.label))
+    .slice(0, 5);
+  const rareScores = Array.from(scoreGroups.entries())
+    .map(([label, players]) => ({ label, players }))
+    .filter((score) => score.players.length === 1)
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .slice(0, 6);
+  const rareScorePlayers = Array.from(scoreGroups.values())
+    .filter((players) => players.length === 1)
+    .flat()
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, 6);
+  const advancingEntries = sortPredictionEntries(advancingGroups);
+  const outcomeEntries = sortPredictionEntries(outcomeGroups);
+
+  return {
+    advancementPlayers: advancementPlayers.sort((a, b) => a.localeCompare(b)),
+    commonScores,
+    differentFixtureCount,
+    exactFixtureCount,
+    exactPlayers: exactPlayers.sort((a, b) => a.localeCompare(b)),
+    goalDifferencePlayers: goalDifferencePlayers.sort((a, b) => a.localeCompare(b)),
+    hasKnownScore,
+    oneTeamCount,
+    penaltyPlayers: penaltyPlayers.sort((a, b) => a.localeCompare(b)),
+    predictionCount: match.stage === 'GROUP_STAGE' ? outcomeGuessCount : advancingGuessCount,
+    predictionEntries: match.stage === 'GROUP_STAGE' ? outcomeEntries : advancingEntries,
+    rareScores,
+    rareScorePlayers,
+    signPlayers: signPlayers.sort((a, b) => a.localeCompare(b)),
+  };
+}
+
+function addPredictionEntry(groups: Map<string, PredictionEntry>, entry: Omit<PredictionEntry, 'players'>, player: string) {
+  const existingEntry = groups.get(entry.key);
+
+  if (existingEntry) {
+    existingEntry.players.push(player);
+    return;
+  }
+
+  groups.set(entry.key, {
+    ...entry,
+    players: [player],
+  });
+}
+
+function sortPredictionEntries(groups: Map<string, PredictionEntry>): PredictionEntry[] {
+  return Array.from(groups.values())
+    .map((entry) => ({
+      ...entry,
+      players: entry.players.sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort((a, b) => b.players.length - a.players.length || a.label.localeCompare(b.label));
+}
+
+function getPredictedGroupOutcome(
+  guess: MatchdayGuess,
+  homeGoals: number,
+  awayGoals: number,
+): Omit<PredictionEntry, 'players'> {
+  if (homeGoals > awayGoals) {
+    return getTeamPredictionEntry(guess.homeTeam, guess.homeTeamMeta);
+  }
+
+  if (awayGoals > homeGoals) {
+    return getTeamPredictionEntry(guess.awayTeam, guess.awayTeamMeta);
+  }
+
+  return {
+    key: 'draw',
+    label: 'Draw',
+    meta: null,
+  };
+}
+
+function getPredictedAdvancingTeam(
+  guess: MatchdayGuess,
+  homeGoals: number,
+  awayGoals: number,
+): Omit<PredictionEntry, 'players'> | null {
+  if (homeGoals > awayGoals) {
+    return getTeamPredictionEntry(guess.homeTeam, guess.homeTeamMeta);
+  }
+
+  if (awayGoals > homeGoals) {
+    return getTeamPredictionEntry(guess.awayTeam, guess.awayTeamMeta);
+  }
+
+  const homePenaltyGoals = parseGuessGoal(guess.homePenaltyGoals);
+  const awayPenaltyGoals = parseGuessGoal(guess.awayPenaltyGoals);
+
+  if (homePenaltyGoals === null || awayPenaltyGoals === null || homePenaltyGoals === awayPenaltyGoals) {
+    return null;
+  }
+
+  return homePenaltyGoals > awayPenaltyGoals
+    ? getTeamPredictionEntry(guess.homeTeam, guess.homeTeamMeta)
+    : getTeamPredictionEntry(guess.awayTeam, guess.awayTeamMeta);
+}
+
+function getTeamPredictionEntry(team: string, meta: MatchdayTeamMeta): Omit<PredictionEntry, 'players'> {
+  return {
+    key: `team:${normalizeConsensusTeamName(team)}`,
+    label: meta.team,
+    meta,
+  };
+}
+
+function countKnownFixtureTeamMatches(match: MatchdayMatch, guess: MatchdayGuess): number {
+  const predictedTeams = new Set([
+    normalizeConsensusTeamName(guess.homeTeam),
+    normalizeConsensusTeamName(guess.awayTeam),
+  ]);
+
+  return [match.homeTeam, match.awayTeam]
+    .map(normalizeConsensusTeamName)
+    .filter((team) => team !== 'tbd')
+    .filter((team) => predictedTeams.has(team))
+    .length;
+}
+
+function normalizeConsensusTeamName(team: string): string {
+  const normalized = team
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+  return normalized || 'tbd';
+}
+
+function parseGuessGoal(value: string): number | null {
+  const parsed = Number.parseInt(value, 10);
+
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hasKnownScoreValue(value: number | null): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function formatPlayerCount(count: number): string {
+  return `${count} ${count === 1 ? 'player' : 'players'}`;
+}
+
+function formatPlayerList(players: string[]): string {
+  if (players.length <= 6) {
+    return players.join(', ');
+  }
+
+  return `${players.slice(0, 6).join(', ')} +${players.length - 6}`;
 }
 
 function TeamLabel({
@@ -812,6 +1372,10 @@ function formatDateKey(
     timeZone: 'UTC',
     ...options,
   }).format(new Date(`${dateKey}T12:00:00Z`));
+}
+
+function formatShortDate(dateKey: string): string {
+  return formatDateKey(dateKey, { month: 'short', day: 'numeric' });
 }
 
 function formatMatchdayChipLabel(dateKey: string, todayDateKey: string): string {

@@ -21,6 +21,13 @@ export interface MatchdayGuess {
   penaltyScoreMatch: boolean | null;
 }
 
+export interface MatchdayLinks {
+  highlightsUrl?: string;
+  matchCenterUrl?: string;
+  note?: string;
+  previewUrl?: string;
+}
+
 export interface MatchdayMatch {
   id: string;
   dateKey: string;
@@ -38,6 +45,7 @@ export interface MatchdayMatch {
   homePenaltyGoals: number | null;
   awayPenaltyGoals: number | null;
   guesses: MatchdayGuess[];
+  links: MatchdayLinks | null;
 }
 
 export interface MatchdayView {

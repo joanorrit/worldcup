@@ -3,6 +3,7 @@ import 'server-only';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { cache } from 'react';
+import { getMatchLinksById } from '@/lib/match-links';
 import { getPlayerBets, type PlayerBetMatch } from '@/lib/player-bets';
 import {
   DEFAULT_PREDICTION_GROUP_ID,
@@ -42,6 +43,7 @@ export const getHomepageMatchdays = cache(async (
 ): Promise<HomepageMatchdayData> => {
   const cacheData = await getWorldCupMatchCache();
   const matches = cacheData?.matches ?? [];
+  const linksById = await getMatchLinksById();
   const predictionIndexes = await getPredictionIndexes(groupId);
   const knockoutMatchIndex = getKnockoutMatchIndex(matches);
   const occurrenceCounts = new Map<string, number>();
@@ -56,6 +58,7 @@ export const getHomepageMatchdays = cache(async (
       awayTeamMeta: getTeamMeta(match.awayTeam),
       guesses: getGuessesForMatch(match, predictionIndexes, knockoutMatchIndex, occurrenceIndex),
       homeTeamMeta: getTeamMeta(match.homeTeam),
+      links: linksById.get(match.id) ?? null,
     };
     const day = days.find((entry) => entry.dateKey === viewMatch.dateKey);
 
