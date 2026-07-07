@@ -33,6 +33,23 @@
       "homePenaltyGoals": null,
       "awayPenaltyGoals": null,
       "winner": "AWAY_TEAM"
+    },
+    {
+      "id": "537382",
+      "sourceId": 537382,
+      "dateKey": "2026-07-07",
+      "utcDate": "2026-07-07T20:00:00.000Z",
+      "displayTime": "22:00",
+      "status": "FINISHED",
+      "stage": "LAST_16",
+      "group": null,
+      "homeTeam": "Switzerland",
+      "awayTeam": "Colombia",
+      "homeGoals": 0,
+      "awayGoals": 0,
+      "homePenaltyGoals": 4,
+      "awayPenaltyGoals": 3,
+      "winner": null
     }
   ]
 }
