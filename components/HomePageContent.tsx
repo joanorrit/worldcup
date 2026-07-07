@@ -27,6 +27,7 @@ export async function HomePageContent({ group }: HomePageContentProps) {
     dateLabel: formatDate(snapshot.date),
     fileName: snapshot.fileName,
     hasRoundOf16Teams: snapshot.hasRoundOf16Teams,
+    hasQuarterFinalTeams: snapshot.hasQuarterFinalTeams,
     standings: snapshot.standings,
   }));
 

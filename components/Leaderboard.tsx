@@ -12,6 +12,7 @@ export interface LeaderboardSnapshotView {
   dateLabel: string;
   fileName: string;
   hasRoundOf16Teams: boolean;
+  hasQuarterFinalTeams: boolean;
   standings: Standing[];
 }
 
@@ -30,12 +31,27 @@ const podiumLogos = [
 ];
 
 const baseTableGridClass = 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem]';
-const expandedTableGridClass = 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem]';
-const roundOf16TableGridClass = 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_7rem]';
+const expandedTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem]';
+const singleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_7rem]';
+const doubleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_7rem_7rem]';
 
 const baseTableWidthClass = 'leaderboard-list-inner min-w-[48rem]';
 const expandedTableWidthClass = 'leaderboard-list-inner min-w-[72rem]';
-const roundOf16TableWidthClass = 'leaderboard-list-inner min-w-[79rem]';
+const singleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[79rem]';
+const doubleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[80rem]';
+
+const knockoutTeamMetricColumns = [
+  {
+    isPresent: (snapshot: Pick<LeaderboardSnapshotView, 'hasRoundOf16Teams' | 'hasQuarterFinalTeams'>) => snapshot.hasRoundOf16Teams,
+    label: 'Vuitfinal',
+    getValue: (standing: Standing) => standing.roundOf16Teams,
+  },
+  {
+    isPresent: (snapshot: Pick<LeaderboardSnapshotView, 'hasRoundOf16Teams' | 'hasQuarterFinalTeams'>) => snapshot.hasQuarterFinalTeams,
+    label: 'Quartfinal',
+    getValue: (standing: Standing) => standing.quarterFinalTeams,
+  },
+];
 
 export function Leaderboard({ snapshots, basePath = '', initialIndex }: LeaderboardProps) {
   const latestIndex = Math.max(snapshots.length - 1, 0);
@@ -90,7 +106,12 @@ export function Leaderboard({ snapshots, basePath = '', initialIndex }: Leaderbo
 
       <PodiumLeaders standings={latestLeaders} basePath={basePath} />
 
-      <PlayerRowList standings={snapshot.standings} basePath={basePath} hasRoundOf16Teams={snapshot.hasRoundOf16Teams} />
+      <PlayerRowList
+        standings={snapshot.standings}
+        basePath={basePath}
+        hasRoundOf16Teams={snapshot.hasRoundOf16Teams}
+        hasQuarterFinalTeams={snapshot.hasQuarterFinalTeams}
+      />
     </section>
   );
 }
@@ -193,14 +214,18 @@ function PlayerRowList({
   standings,
   basePath,
   hasRoundOf16Teams,
+  hasQuarterFinalTeams,
 }: {
   standings: Standing[];
   basePath: string;
   hasRoundOf16Teams: boolean;
+  hasQuarterFinalTeams: boolean;
 }) {
-  const hasExpandedMetrics = hasRoundOf16Teams || standings.some(hasExpandedScoreMetrics);
-  const tableGridClass = hasRoundOf16Teams ? roundOf16TableGridClass : hasExpandedMetrics ? expandedTableGridClass : baseTableGridClass;
-  const tableWidthClass = hasRoundOf16Teams ? roundOf16TableWidthClass : hasExpandedMetrics ? expandedTableWidthClass : baseTableWidthClass;
+  const knockoutTeamMetrics = getKnockoutTeamMetrics({ hasRoundOf16Teams, hasQuarterFinalTeams });
+  const knockoutTeamColumnCount = knockoutTeamMetrics.length;
+  const hasExpandedMetrics = knockoutTeamColumnCount > 0 || standings.some(hasExpandedScoreMetrics);
+  const tableGridClass = getTableGridClass(hasExpandedMetrics, knockoutTeamColumnCount);
+  const tableWidthClass = getTableWidthClass(hasExpandedMetrics, knockoutTeamColumnCount);
 
   return (
     <div className="leaderboard-list-scroll w-full overflow-x-auto">
@@ -227,7 +252,11 @@ function PlayerRowList({
               <span className="text-center">Posicions</span>
               <span className="text-center">Setzens</span>
               <span className="text-center">Encreuam.</span>
-              {hasRoundOf16Teams ? <span className="text-center">Vuitfinal.</span> : null}
+              {knockoutTeamMetrics.map((metric) => (
+                <span key={metric.label} className="text-center">
+                  {metric.label}
+                </span>
+              ))}
             </>
           ) : null}
         </div>
@@ -238,7 +267,7 @@ function PlayerRowList({
               key={standing.player}
               basePath={basePath}
               hasExpandedMetrics={hasExpandedMetrics}
-              hasRoundOf16Teams={hasRoundOf16Teams}
+              knockoutTeamMetrics={knockoutTeamMetrics}
               standing={standing}
               tableGridClass={tableGridClass}
             />
@@ -252,18 +281,18 @@ function PlayerRowList({
 function PlayerRow({
   basePath,
   hasExpandedMetrics,
-  hasRoundOf16Teams,
+  knockoutTeamMetrics,
   standing,
   tableGridClass,
 }: {
   basePath: string;
   hasExpandedMetrics: boolean;
-  hasRoundOf16Teams: boolean;
+  knockoutTeamMetrics: KnockoutTeamMetricColumn[];
   standing: Standing;
   tableGridClass: string;
 }) {
   const isLeader = standing.rank === 1;
-  const statCount = hasExpandedMetrics ? (hasRoundOf16Teams ? 7 : 6) : 3;
+  const statCount = hasExpandedMetrics ? 6 + knockoutTeamMetrics.length : 3;
 
   return (
     <article className={`leaderboard-player-row grid ${tableGridClass} items-center bg-[#F3F2F0] px-4 py-2 text-left transition-colors hover:bg-[#EBE7E4]/65`}>
@@ -271,13 +300,13 @@ function PlayerRow({
         #{standing.rank}
       </div>
 
-      <h2 className="leaderboard-player-name truncate pr-3 text-base font-medium leading-tight">
+      <h2 className="leaderboard-player-name truncate pr-2 text-base font-medium leading-tight">
         <Link href={getPlayerPath(standing.player, basePath)} className="truncate text-[#252F3D] transition-colors hover:text-[#4B607C]">
           {standing.player}
         </Link>
       </h2>
 
-      <div className="leaderboard-player-movement flex justify-center">
+      <div className="leaderboard-player-movement flex justify-start">
         <MovementBadge movement={standing.rankMovement} />
       </div>
 
@@ -299,7 +328,9 @@ function PlayerRow({
             <PlayerRowStat label="Posicions" value={standing.positions} />
             <PlayerRowStat label="Setzens" value={standing.roundOf32} />
             <PlayerRowStat label="Encreuam." value={standing.brackets} />
-            {hasRoundOf16Teams ? <PlayerRowStat label="Vuitfinal." value={standing.roundOf16Teams} /> : null}
+            {knockoutTeamMetrics.map((metric) => (
+              <PlayerRowStat key={metric.label} label={metric.label} value={metric.getValue(standing)} />
+            ))}
           </>
         ) : null}
       </div>
@@ -397,6 +428,46 @@ function hasExpandedScoreMetrics(standing: Standing) {
   return (
     standing.positions !== undefined ||
     standing.roundOf32 !== undefined ||
-    standing.brackets !== undefined
+    standing.brackets !== undefined ||
+    standing.roundOf16Teams !== undefined ||
+    standing.quarterFinalTeams !== undefined
   );
+}
+
+type KnockoutTeamMetricColumn = (typeof knockoutTeamMetricColumns)[number];
+
+function getKnockoutTeamMetrics(snapshot: Pick<LeaderboardSnapshotView, 'hasRoundOf16Teams' | 'hasQuarterFinalTeams'>) {
+  return knockoutTeamMetricColumns.filter((metric) => metric.isPresent(snapshot));
+}
+
+function getTableGridClass(hasExpandedMetrics: boolean, knockoutTeamColumnCount: number) {
+  if (!hasExpandedMetrics) {
+    return baseTableGridClass;
+  }
+
+  if (knockoutTeamColumnCount >= 2) {
+    return doubleKnockoutTeamTableGridClass;
+  }
+
+  if (knockoutTeamColumnCount === 1) {
+    return singleKnockoutTeamTableGridClass;
+  }
+
+  return expandedTableGridClass;
+}
+
+function getTableWidthClass(hasExpandedMetrics: boolean, knockoutTeamColumnCount: number) {
+  if (!hasExpandedMetrics) {
+    return baseTableWidthClass;
+  }
+
+  if (knockoutTeamColumnCount >= 2) {
+    return doubleKnockoutTeamTableWidthClass;
+  }
+
+  if (knockoutTeamColumnCount === 1) {
+    return singleKnockoutTeamTableWidthClass;
+  }
+
+  return expandedTableWidthClass;
 }
