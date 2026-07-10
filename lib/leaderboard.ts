@@ -41,6 +41,7 @@ export interface RawCsvRow {
   Encreuaments?: string;
   Vuitfinalistes?: string;
   Quartfinalistes?: string;
+  Semifinalistes?: string;
   Punts?: string;
 }
 
@@ -54,6 +55,7 @@ export interface Standing {
   brackets?: number;
   roundOf16Teams?: number;
   quarterFinalTeams?: number;
+  semifinalTeams?: number;
   points: number;
   penalty: number;
   rank: number;
@@ -67,6 +69,7 @@ export interface LeaderboardSnapshot {
   fileName: string;
   hasRoundOf16Teams: boolean;
   hasQuarterFinalTeams: boolean;
+  hasSemifinalTeams: boolean;
   standings: Standing[];
 }
 
@@ -256,6 +259,7 @@ function readSnapshot(source: SnapshotSource): LeaderboardSnapshot {
     fileName: source.fileName,
     hasRoundOf16Teams: rows.some(hasRoundOf16TeamsColumn),
     hasQuarterFinalTeams: rows.some(hasQuarterFinalTeamsColumn),
+    hasSemifinalTeams: rows.some(hasSemifinalTeamsColumn),
     standings: rankStandings(standingsWithoutRanks),
   };
 }
@@ -279,6 +283,7 @@ function normalizeRow(row: RawCsvRow): Omit<Standing, 'rank' | 'rankMovement' | 
     brackets: parseOptionalScore(row.Encreuaments),
     roundOf16Teams: parseOptionalScore(row.Vuitfinalistes),
     quarterFinalTeams: parseOptionalScore(row.Quartfinalistes),
+    semifinalTeams: parseOptionalScore(row.Semifinalistes),
     points: parseScore(row.Punts) - penalty,
     penalty,
   };
@@ -364,6 +369,10 @@ function hasRoundOf16TeamsColumn(row: RawCsvRow): boolean {
 
 function hasQuarterFinalTeamsColumn(row: RawCsvRow): boolean {
   return Object.prototype.hasOwnProperty.call(row, 'Quartfinalistes');
+}
+
+function hasSemifinalTeamsColumn(row: RawCsvRow): boolean {
+  return Object.prototype.hasOwnProperty.call(row, 'Semifinalistes');
 }
 
 function getPlayerPenalty(player: string): number {

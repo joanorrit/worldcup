@@ -13,6 +13,7 @@ export interface LeaderboardSnapshotView {
   fileName: string;
   hasRoundOf16Teams: boolean;
   hasQuarterFinalTeams: boolean;
+  hasSemifinalTeams: boolean;
   standings: Standing[];
 }
 
@@ -32,24 +33,31 @@ const podiumLogos = [
 
 const baseTableGridClass = 'grid-cols-[4.5rem_minmax(9rem,1fr)_5.5rem_6rem_4.75rem_5rem_5.75rem_5.75rem]';
 const expandedTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem]';
-const singleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_7rem]';
-const doubleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_7rem_7rem]';
+const singleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_5.75rem]';
+const doubleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_5.75rem_5.75rem]';
+const tripleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_5.75rem_5.75rem_5.75rem]';
 
 const baseTableWidthClass = 'leaderboard-list-inner min-w-[48rem]';
 const expandedTableWidthClass = 'leaderboard-list-inner min-w-[72rem]';
 const singleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[79rem]';
 const doubleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[80rem]';
+const tripleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[80rem]';
 
 const knockoutTeamMetricColumns = [
   {
-    isPresent: (snapshot: Pick<LeaderboardSnapshotView, 'hasRoundOf16Teams' | 'hasQuarterFinalTeams'>) => snapshot.hasRoundOf16Teams,
+    isPresent: (snapshot: KnockoutTeamMetricSnapshot) => snapshot.hasRoundOf16Teams,
     label: 'Vuitfinal',
     getValue: (standing: Standing) => standing.roundOf16Teams,
   },
   {
-    isPresent: (snapshot: Pick<LeaderboardSnapshotView, 'hasRoundOf16Teams' | 'hasQuarterFinalTeams'>) => snapshot.hasQuarterFinalTeams,
+    isPresent: (snapshot: KnockoutTeamMetricSnapshot) => snapshot.hasQuarterFinalTeams,
     label: 'Quartfinal',
     getValue: (standing: Standing) => standing.quarterFinalTeams,
+  },
+  {
+    isPresent: (snapshot: KnockoutTeamMetricSnapshot) => snapshot.hasSemifinalTeams,
+    label: 'Semifinal',
+    getValue: (standing: Standing) => standing.semifinalTeams,
   },
 ];
 
@@ -111,6 +119,7 @@ export function Leaderboard({ snapshots, basePath = '', initialIndex }: Leaderbo
         basePath={basePath}
         hasRoundOf16Teams={snapshot.hasRoundOf16Teams}
         hasQuarterFinalTeams={snapshot.hasQuarterFinalTeams}
+        hasSemifinalTeams={snapshot.hasSemifinalTeams}
       />
     </section>
   );
@@ -215,13 +224,15 @@ function PlayerRowList({
   basePath,
   hasRoundOf16Teams,
   hasQuarterFinalTeams,
+  hasSemifinalTeams,
 }: {
   standings: Standing[];
   basePath: string;
   hasRoundOf16Teams: boolean;
   hasQuarterFinalTeams: boolean;
+  hasSemifinalTeams: boolean;
 }) {
-  const knockoutTeamMetrics = getKnockoutTeamMetrics({ hasRoundOf16Teams, hasQuarterFinalTeams });
+  const knockoutTeamMetrics = getKnockoutTeamMetrics({ hasRoundOf16Teams, hasQuarterFinalTeams, hasSemifinalTeams });
   const knockoutTeamColumnCount = knockoutTeamMetrics.length;
   const hasExpandedMetrics = knockoutTeamColumnCount > 0 || standings.some(hasExpandedScoreMetrics);
   const tableGridClass = getTableGridClass(hasExpandedMetrics, knockoutTeamColumnCount);
@@ -430,13 +441,19 @@ function hasExpandedScoreMetrics(standing: Standing) {
     standing.roundOf32 !== undefined ||
     standing.brackets !== undefined ||
     standing.roundOf16Teams !== undefined ||
-    standing.quarterFinalTeams !== undefined
+    standing.quarterFinalTeams !== undefined ||
+    standing.semifinalTeams !== undefined
   );
 }
 
+type KnockoutTeamMetricSnapshot = Pick<
+  LeaderboardSnapshotView,
+  'hasRoundOf16Teams' | 'hasQuarterFinalTeams' | 'hasSemifinalTeams'
+>;
+
 type KnockoutTeamMetricColumn = (typeof knockoutTeamMetricColumns)[number];
 
-function getKnockoutTeamMetrics(snapshot: Pick<LeaderboardSnapshotView, 'hasRoundOf16Teams' | 'hasQuarterFinalTeams'>) {
+function getKnockoutTeamMetrics(snapshot: KnockoutTeamMetricSnapshot) {
   return knockoutTeamMetricColumns.filter((metric) => metric.isPresent(snapshot));
 }
 
@@ -445,7 +462,11 @@ function getTableGridClass(hasExpandedMetrics: boolean, knockoutTeamColumnCount:
     return baseTableGridClass;
   }
 
-  if (knockoutTeamColumnCount >= 2) {
+  if (knockoutTeamColumnCount >= 3) {
+    return tripleKnockoutTeamTableGridClass;
+  }
+
+  if (knockoutTeamColumnCount === 2) {
     return doubleKnockoutTeamTableGridClass;
   }
 
@@ -461,7 +482,11 @@ function getTableWidthClass(hasExpandedMetrics: boolean, knockoutTeamColumnCount
     return baseTableWidthClass;
   }
 
-  if (knockoutTeamColumnCount >= 2) {
+  if (knockoutTeamColumnCount >= 3) {
+    return tripleKnockoutTeamTableWidthClass;
+  }
+
+  if (knockoutTeamColumnCount === 2) {
     return doubleKnockoutTeamTableWidthClass;
   }
 

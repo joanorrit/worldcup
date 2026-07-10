@@ -28,6 +28,7 @@ export async function HomePageContent({ group }: HomePageContentProps) {
     fileName: snapshot.fileName,
     hasRoundOf16Teams: snapshot.hasRoundOf16Teams,
     hasQuarterFinalTeams: snapshot.hasQuarterFinalTeams,
+    hasSemifinalTeams: snapshot.hasSemifinalTeams,
     standings: snapshot.standings,
   }));
 
