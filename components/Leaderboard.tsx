@@ -14,6 +14,8 @@ export interface LeaderboardSnapshotView {
   hasRoundOf16Teams: boolean;
   hasQuarterFinalTeams: boolean;
   hasSemifinalTeams: boolean;
+  hasFinalTeams: boolean;
+  hasThirdPlaceTeams: boolean;
   standings: Standing[];
 }
 
@@ -36,28 +38,47 @@ const expandedTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.
 const singleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_5.75rem]';
 const doubleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_5.75rem_5.75rem]';
 const tripleKnockoutTeamTableGridClass = 'grid-cols-[4.5rem_7rem_4rem_6rem_4.75rem_5rem_5.75rem_5.75rem_5.25rem_7rem_6.5rem_5.75rem_5.75rem_5.75rem]';
+const quadrupleKnockoutTeamTableGridClass = 'grid-cols-[4rem_6rem_3.5rem_5.5rem_4.25rem_4.75rem_5.25rem_5.25rem_5rem_5.75rem_6rem_5rem_5rem_5rem_5rem]';
+const quintupleKnockoutTeamTableGridClass = 'grid-cols-[4rem_6rem_3.5rem_5.25rem_4rem_4.5rem_5.25rem_5rem_5rem_5.25rem_5.75rem_4.75rem_4.75rem_4.75rem_4.75rem_4.75rem]';
 
 const baseTableWidthClass = 'leaderboard-list-inner min-w-[48rem]';
 const expandedTableWidthClass = 'leaderboard-list-inner min-w-[72rem]';
 const singleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[79rem]';
 const doubleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[80rem]';
 const tripleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[80rem]';
+const quadrupleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[80rem]';
+const quintupleKnockoutTeamTableWidthClass = 'leaderboard-list-inner min-w-[80rem]';
 
 const knockoutTeamMetricColumns = [
   {
     isPresent: (snapshot: KnockoutTeamMetricSnapshot) => snapshot.hasRoundOf16Teams,
+    headerLabel: 'Vuitf.',
     label: 'Vuitfinal',
     getValue: (standing: Standing) => standing.roundOf16Teams,
   },
   {
     isPresent: (snapshot: KnockoutTeamMetricSnapshot) => snapshot.hasQuarterFinalTeams,
+    headerLabel: 'Quarts',
     label: 'Quartfinal',
     getValue: (standing: Standing) => standing.quarterFinalTeams,
   },
   {
     isPresent: (snapshot: KnockoutTeamMetricSnapshot) => snapshot.hasSemifinalTeams,
+    headerLabel: 'Semis',
     label: 'Semifinal',
     getValue: (standing: Standing) => standing.semifinalTeams,
+  },
+  {
+    isPresent: (snapshot: KnockoutTeamMetricSnapshot) => snapshot.hasFinalTeams,
+    headerLabel: 'Finals',
+    label: 'Finalistes',
+    getValue: (standing: Standing) => standing.finalTeams,
+  },
+  {
+    isPresent: (snapshot: KnockoutTeamMetricSnapshot) => snapshot.hasThirdPlaceTeams,
+    headerLabel: 'Tercers',
+    label: 'Tercers',
+    getValue: (standing: Standing) => standing.thirdPlaceTeams,
   },
 ];
 
@@ -120,6 +141,8 @@ export function Leaderboard({ snapshots, basePath = '', initialIndex }: Leaderbo
         hasRoundOf16Teams={snapshot.hasRoundOf16Teams}
         hasQuarterFinalTeams={snapshot.hasQuarterFinalTeams}
         hasSemifinalTeams={snapshot.hasSemifinalTeams}
+        hasFinalTeams={snapshot.hasFinalTeams}
+        hasThirdPlaceTeams={snapshot.hasThirdPlaceTeams}
       />
     </section>
   );
@@ -225,14 +248,24 @@ function PlayerRowList({
   hasRoundOf16Teams,
   hasQuarterFinalTeams,
   hasSemifinalTeams,
+  hasFinalTeams,
+  hasThirdPlaceTeams,
 }: {
   standings: Standing[];
   basePath: string;
   hasRoundOf16Teams: boolean;
   hasQuarterFinalTeams: boolean;
   hasSemifinalTeams: boolean;
+  hasFinalTeams: boolean;
+  hasThirdPlaceTeams: boolean;
 }) {
-  const knockoutTeamMetrics = getKnockoutTeamMetrics({ hasRoundOf16Teams, hasQuarterFinalTeams, hasSemifinalTeams });
+  const knockoutTeamMetrics = getKnockoutTeamMetrics({
+    hasRoundOf16Teams,
+    hasQuarterFinalTeams,
+    hasSemifinalTeams,
+    hasFinalTeams,
+    hasThirdPlaceTeams,
+  });
   const knockoutTeamColumnCount = knockoutTeamMetrics.length;
   const hasExpandedMetrics = knockoutTeamColumnCount > 0 || standings.some(hasExpandedScoreMetrics);
   const tableGridClass = getTableGridClass(hasExpandedMetrics, knockoutTeamColumnCount);
@@ -265,7 +298,7 @@ function PlayerRowList({
               <span className="text-center">Encreuam.</span>
               {knockoutTeamMetrics.map((metric) => (
                 <span key={metric.label} className="text-center">
-                  {metric.label}
+                  {metric.headerLabel}
                 </span>
               ))}
             </>
@@ -442,13 +475,15 @@ function hasExpandedScoreMetrics(standing: Standing) {
     standing.brackets !== undefined ||
     standing.roundOf16Teams !== undefined ||
     standing.quarterFinalTeams !== undefined ||
-    standing.semifinalTeams !== undefined
+    standing.semifinalTeams !== undefined ||
+    standing.finalTeams !== undefined ||
+    standing.thirdPlaceTeams !== undefined
   );
 }
 
 type KnockoutTeamMetricSnapshot = Pick<
   LeaderboardSnapshotView,
-  'hasRoundOf16Teams' | 'hasQuarterFinalTeams' | 'hasSemifinalTeams'
+  'hasRoundOf16Teams' | 'hasQuarterFinalTeams' | 'hasSemifinalTeams' | 'hasFinalTeams' | 'hasThirdPlaceTeams'
 >;
 
 type KnockoutTeamMetricColumn = (typeof knockoutTeamMetricColumns)[number];
@@ -460,6 +495,14 @@ function getKnockoutTeamMetrics(snapshot: KnockoutTeamMetricSnapshot) {
 function getTableGridClass(hasExpandedMetrics: boolean, knockoutTeamColumnCount: number) {
   if (!hasExpandedMetrics) {
     return baseTableGridClass;
+  }
+
+  if (knockoutTeamColumnCount >= 5) {
+    return quintupleKnockoutTeamTableGridClass;
+  }
+
+  if (knockoutTeamColumnCount === 4) {
+    return quadrupleKnockoutTeamTableGridClass;
   }
 
   if (knockoutTeamColumnCount >= 3) {
@@ -480,6 +523,14 @@ function getTableGridClass(hasExpandedMetrics: boolean, knockoutTeamColumnCount:
 function getTableWidthClass(hasExpandedMetrics: boolean, knockoutTeamColumnCount: number) {
   if (!hasExpandedMetrics) {
     return baseTableWidthClass;
+  }
+
+  if (knockoutTeamColumnCount >= 5) {
+    return quintupleKnockoutTeamTableWidthClass;
+  }
+
+  if (knockoutTeamColumnCount === 4) {
+    return quadrupleKnockoutTeamTableWidthClass;
   }
 
   if (knockoutTeamColumnCount >= 3) {

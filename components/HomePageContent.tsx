@@ -29,6 +29,8 @@ export async function HomePageContent({ group }: HomePageContentProps) {
     hasRoundOf16Teams: snapshot.hasRoundOf16Teams,
     hasQuarterFinalTeams: snapshot.hasQuarterFinalTeams,
     hasSemifinalTeams: snapshot.hasSemifinalTeams,
+    hasFinalTeams: snapshot.hasFinalTeams,
+    hasThirdPlaceTeams: snapshot.hasThirdPlaceTeams,
     standings: snapshot.standings,
   }));
 

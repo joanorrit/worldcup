@@ -42,6 +42,8 @@ export interface RawCsvRow {
   Vuitfinalistes?: string;
   Quartfinalistes?: string;
   Semifinalistes?: string;
+  Finalistes?: string;
+  Tercers?: string;
   Punts?: string;
 }
 
@@ -56,6 +58,8 @@ export interface Standing {
   roundOf16Teams?: number;
   quarterFinalTeams?: number;
   semifinalTeams?: number;
+  finalTeams?: number;
+  thirdPlaceTeams?: number;
   points: number;
   penalty: number;
   rank: number;
@@ -70,6 +74,8 @@ export interface LeaderboardSnapshot {
   hasRoundOf16Teams: boolean;
   hasQuarterFinalTeams: boolean;
   hasSemifinalTeams: boolean;
+  hasFinalTeams: boolean;
+  hasThirdPlaceTeams: boolean;
   standings: Standing[];
 }
 
@@ -260,6 +266,8 @@ function readSnapshot(source: SnapshotSource): LeaderboardSnapshot {
     hasRoundOf16Teams: rows.some(hasRoundOf16TeamsColumn),
     hasQuarterFinalTeams: rows.some(hasQuarterFinalTeamsColumn),
     hasSemifinalTeams: rows.some(hasSemifinalTeamsColumn),
+    hasFinalTeams: rows.some(hasFinalTeamsColumn),
+    hasThirdPlaceTeams: rows.some(hasThirdPlaceTeamsColumn),
     standings: rankStandings(standingsWithoutRanks),
   };
 }
@@ -284,6 +292,8 @@ function normalizeRow(row: RawCsvRow): Omit<Standing, 'rank' | 'rankMovement' | 
     roundOf16Teams: parseOptionalScore(row.Vuitfinalistes),
     quarterFinalTeams: parseOptionalScore(row.Quartfinalistes),
     semifinalTeams: parseOptionalScore(row.Semifinalistes),
+    finalTeams: parseOptionalScore(row.Finalistes),
+    thirdPlaceTeams: parseOptionalScore(row.Tercers),
     points: parseScore(row.Punts) - penalty,
     penalty,
   };
@@ -373,6 +383,14 @@ function hasQuarterFinalTeamsColumn(row: RawCsvRow): boolean {
 
 function hasSemifinalTeamsColumn(row: RawCsvRow): boolean {
   return Object.prototype.hasOwnProperty.call(row, 'Semifinalistes');
+}
+
+function hasFinalTeamsColumn(row: RawCsvRow): boolean {
+  return Object.prototype.hasOwnProperty.call(row, 'Finalistes');
+}
+
+function hasThirdPlaceTeamsColumn(row: RawCsvRow): boolean {
+  return Object.prototype.hasOwnProperty.call(row, 'Tercers');
 }
 
 function getPlayerPenalty(player: string): number {
